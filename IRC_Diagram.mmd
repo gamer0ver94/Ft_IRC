@@ -1,0 +1,16 @@
+graph TD;
+Server-->Server_Socket;
+Server_Socket-->Bind;
+Bind-->Listen;
+Listen-->Accept;
+Accept-->Receive;
+Accept-->Send;
+Receive-->Close;
+Send-->Close;
+
+Class_Server;
+Class_Server-->Run;
+Run-->Create_Socket;
+Create_Socket-->Bind_Socket;
+Bind_Socket-->Listening;
+Listening-->Accepts;
