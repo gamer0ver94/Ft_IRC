@@ -3,6 +3,10 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <string>
+#include <cstdlib>
+#include <unistd.h>
+#include <cstring>
 
 class Server{
 	public :
@@ -11,7 +15,7 @@ class Server{
 		~Server();
 		// Methodes
 		void run();
-		class	ServerException{
+		class	ServerException : public std::exception{
 			public :
 				const char* what() throw();
 		};
@@ -20,8 +24,10 @@ class Server{
 		unsigned int port;
 		std::string password;
 		int socketFd;
-		struct sockaddr_in *socketAddr;
+		struct sockaddr_in socketAddr;
 		// Methodes
 		void createSocket();
 		void bindSocket();
+		void listening();
+
 };
