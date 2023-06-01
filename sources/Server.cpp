@@ -17,7 +17,7 @@ void Server::createSocket(){
 	std::cout << "<creating socket>" << std::endl;
 	socketFd = socket(AF_INET, SOCK_STREAM, 0);
 	if (socketFd == -1){
-		throw ServerException();
+		throw std::runtime_error("Failed to create socket.");
 	}
 	int reuseAddr = 1;
     if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR, &reuseAddr, sizeof(reuseAddr)) == -1) {
@@ -52,38 +52,32 @@ void Server::listening(){
 	std::cout << "<listening socket>" << std::endl;
 	listen(socketFd, 5);
 	std::cout << inet_ntoa(socketAddr.sin_addr) << " port " << port << std::endl;
-	while (true) {
     // Accept a new client connection
-    struct sockaddr_in clientAddr;
-    socklen_t clientAddrLen = sizeof(clientAddr);
-    int clientSocketFd = accept(socketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
-	if (clientSocketFd == -1){
-		throw std::runtime_error("Failed to accept a client connection.");
-	}
-    // Handle the client connection
-    // You can create a new thread or use asynchronous I/O for concurrent handling of multiple clients
-    char buffer[1024];
-    ssize_t bytesRead = recv(clientSocketFd, buffer, sizeof(buffer), 0);
-    if (bytesRead == -1) {
-        throw std::runtime_error("Failed to receive.");
-    } else if (bytesRead == 0) {
-        // Connection closed by the client
+   	 	struct sockaddr_in clientAddr;
+   	 	socklen_t clientAddrLen = sizeof(clientAddr);
+   	 	int clientSocket = accept(socketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
+	 	clients.push_back(Client("la",clientSocket));
+		if (clientSocket == -1){
+			throw std::runtime_error("Failed to accept a client connection.");
+		}
+		while (true){
+   	 	// Handle the client connection
+   	 	// You can create a new thread or use asynchronous I/O for concurrent handling of multiple clients
+   	 	char buffer[1024];
+   	 	ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
+   	 	if (bytesRead == -1) {
+   	 	    throw std::runtime_error("Failed to receive.");
+   	 	} else if (bytesRead == 0) {
+   	 	    // Connection closed by the client
+   	 	    close(clientSocket);
+   	 	    // continue;  // Go back to accepting new connections
+   	 	}
 		std::cout << buffer << std::endl;
-        close(clientSocketFd);
-        // continue;  // Go back to accepting new connections
-    }
-    const char* response = "Response from server";
-    ssize_t bytesSent = send(clientSocketFd, response, strlen(response), 0);
-    if (bytesSent == -1) {
-        throw std::runtime_error("Failed to send.");
-    }
-
-    // Close the client socket after finishing the request
-    close(clientSocketFd);
-}
-}
-// Exception
-
-const char* Server::ServerException::what() throw() {
-    return "Exception Error";
+   	 	const char* response = "PRIVMSG";
+   	 	ssize_t bytesSent = send(clientSocket, response, strlen(response), 0);
+   	 	if (bytesSent == -1) {
+   	 	   	throw std::runtime_error("Failed to send.");
+   	 	}
+		}
+		// close(clientSocket);
 }

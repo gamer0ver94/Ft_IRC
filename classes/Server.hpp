@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <cstring>
+#include <vector>
+#include "Channel.hpp"
 
 class Server{
 	public :
@@ -15,10 +17,6 @@ class Server{
 		~Server();
 		// Methodes
 		void run();
-		class	ServerException : public std::exception{
-			public :
-				const char* what() throw();
-		};
 	private :
 		// Properties
 		unsigned int port;
@@ -29,5 +27,6 @@ class Server{
 		void createSocket();
 		void bindSocket();
 		void listening();
-
+		std::vector<Client> clients;
+		std::vector<Channel> channels;
 };
