@@ -7,7 +7,7 @@ int main(int argc, char**argv){
 	}
 	try{
 		std::string password(argv[2]);
-		std::string port(argv[1]);
+		unsigned int port = atoi(argv[1]);
 		Server *server = new Server(port, password);
 		server->run();
 	}
