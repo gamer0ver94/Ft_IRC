@@ -52,40 +52,70 @@ void Server::bindSocket() {
 }
 
 void Server::listening() {
-    char buffer[1024];
+    
     struct sockaddr_in clientAddr;
     socklen_t clientAddrLen = sizeof(clientAddr);
-    std::cout << Green << "Listening Clients Connections ..." << Reset << std::endl;
-    // Make Server Socket Listenning Income Clients 
     listen(socketFd, 5);
-    // std::cout << inet_ntoa(socketAddr.sin_addr) << " port " << port << std::endl;
+    std::cout << Green << "Listening Clients Connections ..." << Reset << std::endl;
     // Accept a new client connection
-    // Handle the client connection
-    // You can create a new thread or use asynchronous I/O for concurrent handling of multiple clients
-    while (true) {
         int clientSocket = accept(socketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
         if (clientSocket == -1) {
             throw std::runtime_error("Failed to accept a client connection.");
         }
-        strcpy(buffer, ":SHITYSERVER 001 PANDA :Welcome to the IRC server");
-        send(clientSocket, buffer, sizeof(buffer) + 1, 0);
-        // send(clientSocket,buffer, sizeof(buffer) + 1, 0);
-        memset(buffer, 0, 1024);
-        ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
-        if (bytesRead == -1) {
-            throw std::runtime_error("Failed to receive.");
+        // handleCommunication
+        while (true){
+            handleCommunication(clientSocket);
         }
-        else if (bytesRead == 0) {
-            // Connection closed by the client
-            close(clientSocket);
-            break; // Go back to accepting new connections
-        }
-        buffer[bytesRead] = '\0';
-        std::cout << "Received message: " << std::string(buffer, 0, bytesRead) << std::endl;
-        
-        // Process the client message and send a response
-        // Handle different commands
-        // Add more conditions to handle other commands
+}
+
+void Server::handleCommunication(int clientSocket) {
+    char buffer[1024];
+    memset(buffer, 0, sizeof(buffer));
+    // Receive Data from Client
+    int recvBytes = recv(clientSocket, buffer, sizeof(buffer), 0);
+    if (recvBytes == -1) {
+        throw std::runtime_error("Failed to receive data from client.");
     }
-        // close(clientSocket);
+    buffer[recvBytes] = '\0';
+    std::string message(buffer);
+    std::cout << Green << "Received Data From Client: " << Reset << message << std::endl;
+    std::string response;
+    if (message.substr(0, 5) == "NICK " && message.find("USER ") != std::string::npos) {
+        // Handle the user information and connection establishment
+        // ...
+
+        // Send a welcome message to the client
+        std::string welcomeMessage = ":SERVER 001 WELCOME :Welcome to the IRC server\r\n";
+        int sendStatus = send(clientSocket, welcomeMessage.c_str(), welcomeMessage.length(), 0);
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.substr(0, 4) == "CAP ") {
+        // Handle capability negotiation commands
+        response = handleCapabilityNegotiation(message);
+        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+
+    } else if (message.substr(0, 5) == "JOIN ") {
+        // Handle join channel commands
+        // response = handleJoinChannel(message);
+    } else if (message.substr(0, 4) == "PART ") {
+        // Handle leave channel commands
+        // response = handleLeaveChannel(message);
+    } else {
+        // Handle unrecognized commands
+        response = "Unknown command.";
+    }
+    // Print Data
+}
+
+std::string Server::handleCapabilityNegotiation(const std::string& message) {
+    // Check if the received message is CAP LS
+    if (message.substr(0, 8) != "CAP LS\r\n")
+        return "Unknown command.";
+    // Prepare the list of supported capabilities
+    std::string capabilities = "multi-prefix message-tags account-notify extended-join";
+    // Construct the response
+    std::string response = "CAP * LS :" + capabilities + "\r\n";
+    return response;
 }

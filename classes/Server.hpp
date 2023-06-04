@@ -51,7 +51,10 @@ class Server{
 		void createSocket();
 		void bindSocket();
 		void listening();
-		std::vector<Client> clients;
+		void handleCommunication(int clientSocket);
+		std::string handleCapabilityNegotiation(const std::string& message);
+		std::map<std::string, Client> clients;
+		// std::vector<Client> clients;
 		std::vector<Channel> channels;
 		std::vector<int> clientSockets;
 };
