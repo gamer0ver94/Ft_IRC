@@ -20,7 +20,7 @@ void Server::createSocket() {
         throw std::runtime_error("Failed to create socket.");
     }
     int reuseAddr = 1;
-    if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, (const char*)&reuseAddr, sizeof(reuseAddr)) == -1) {
+    if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseAddr, sizeof(reuseAddr)) == -1) {
         close(socketFd);
         throw std::runtime_error("Failed to set SO_REUSEADDR option.");
     }
@@ -145,7 +145,7 @@ bool Server::parseNicknameMessage(const std::string& message, std::string& nickn
 void Server::handleCommands(std::string message, pollfd& pollFds){
     std::string response;
     std::cout << Green << "Received Data From Client: " << Reset << message << std::endl;
-    if (message.substr(0, 5) == "NICK " && message.find("USER ") != std::string::npos) {
+    if (message.find("NICK ") != std::string::npos && message.find("USER ") != std::string::npos) {
         // Handle the user information and connection establishment
         std::string nickName;
         std::string userName;
@@ -160,7 +160,7 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
             throw std::runtime_error("Failed to send data to client.");
         }
     }
-    else if (message.substr(0, 4) == "CAP ") {
+    else if (message.find("CAP ") != std::string::npos) {
         // Handle capability negotiation commands
         response = handleCapabilityNegotiation(message);
         std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
@@ -169,7 +169,7 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
             throw std::runtime_error("Failed to send data to client.");
         }
     }
-    else if (message.substr(0, 5) == "JOIN ") {
+    else if (message.find("JOIN ") != std::string::npos) {
         std::string channelName;
         parseChannelName(message, channelName);
         // Handle join channel commands
@@ -182,7 +182,11 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
         }
         std::cout << Red << clients[pollFds.fd]->nickname << " will create a channel" << Reset << std::endl;
         channels.push_back(Channel(channelName, *clients[pollFds.fd]));
-        
+        for(std::vector<Channel>::iterator it = channels.begin(); it != channels.end();++it){
+			if ((*it).channelName == channelName){
+				(*it).invitedClients.insert(std::make_pair<std::string, Client>(clients[pollFds.fd]->nickname, *clients[pollFds.fd]));
+			}
+		}
         // Channel la(channelName, clients[pollFds.fd]);
         // response = handleJoinChannel(message);
     }
@@ -196,13 +200,19 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
         std::string messageContent;
         std::string channelName;
         std::string messageType;
-        parseMessage(message, senderNickname, messageContent);
+        parseMessage(message, channelName, messageContent);
         std::cout << clients[pollFds.fd]->nickname << " from channel -> " << channelName << " sended: " << messageContent << std::endl;
         for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
-            std::cout << "CHANEL DOUND" << std::endl;
             if ((*it).channelName == channelName){
+            	std::cout << "CHANEL DOUND" << std::endl;
                 for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
-                    send(iter->second.socketFd,messageContent.c_str(),messageContent.size(),0);
+					std::cout << "tryed to send message to" << iter->second.nickname <<": " << messageContent << std::endl;
+                    send(iter->second.socketFd,messageContent.c_str(),sizeof(messageContent),0);
+					 send(iter->second.socketFd,messageContent.c_str(),messageContent.length(),0);
+					write(iter->second.socketFd, messageContent.c_str(), sizeof(messageContent));
+					if(iter->second.socketFd < 0){
+						std::cerr << "socket does not exit" << std::endl;
+					}
                     std::cout << "LETS GO" << std::endl;
                 }
             }
@@ -236,7 +246,7 @@ bool Server::parseMessage(std::string message, std::string &channelName, std::st
    std::size_t channelStartPos = message.find("#");
     std::size_t channelEndPos = message.find(" ", channelStartPos);
     channelName = message.substr(channelStartPos, channelEndPos - channelStartPos);
-
+	// std::cout << "testomg " << channelName << std::endl;
     // Find the position of the message
     std::size_t messageStartPos = message.find(":", channelEndPos);
     messageContent = message.substr(messageStartPos + 1);
