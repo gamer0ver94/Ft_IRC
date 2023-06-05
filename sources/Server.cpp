@@ -194,12 +194,17 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
         // Handle leave channel commands
         // response = handleLeaveChannel(message);
     }
+	else if (message.find("NICK ") != std::string::npos){
+		clients[pollFds.fd]->nickname = "another";
+		std::cout << "this client name now is " << clients[pollFds.fd]->nickname << std::endl;
+	}
     else if (message.substr(0, 8) == "PRIVMSG "){
         // Handle private message commands
         std::string senderNickname;
         std::string messageContent;
         std::string channelName;
         std::string messageType;
+		std::string test;
         parseMessage(message, channelName, messageContent);
         std::cout << clients[pollFds.fd]->nickname << " from channel -> " << channelName << " sended: " << messageContent << std::endl;
         for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
@@ -207,9 +212,9 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
             	std::cout << "CHANEL DOUND" << std::endl;
                 for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
 					std::cout << "tryed to send message to" << iter->second.nickname <<": " << messageContent << std::endl;
-                    send(iter->second.socketFd,messageContent.c_str(),sizeof(messageContent),0);
-					 send(iter->second.socketFd,messageContent.c_str(),messageContent.length(),0);
-					write(iter->second.socketFd, messageContent.c_str(), sizeof(messageContent));
+					test = "PRIVMSG " + channelName + " :" + messageContent;
+					std::cout << Red << test << Reset << std::endl;
+					 send(iter->second.socketFd,test.c_str(),test.length(),0);
 					if(iter->second.socketFd < 0){
 						std::cerr << "socket does not exit" << std::endl;
 					}
