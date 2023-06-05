@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/poll.h>
 #include <string>
+#include <sstream>
 #include <string.h>
 #include "Channel.hpp"
 #include <stdlib.h>
@@ -47,14 +48,18 @@ class Server{
 		std::string password;
 		int socketFd;
 		struct sockaddr_in socketAddr;
+		std::vector<Channel> channels;
 		// Methodes
 		void createSocket();
 		void bindSocket();
 		void listening();
-		void handleCommunication(int clientSocket);
+		void handleCommunication(std::vector<pollfd>& pollFds);
+		void handleCommands(std::string message, pollfd& pollFds);
 		std::string handleCapabilityNegotiation(const std::string& message);
-		std::map<std::string, Client> clients;
+		bool parseNicknameMessage(const std::string& message, std::string& nickname, std::string& username);
+		bool parseMessage(std::string message, std::string &channelName, std::string &messageContent);
+		bool parseChannelName(const std::string& message, std::string& channelName);
+		std::map<int, Client*> clients;
 		// std::vector<Client> clients;
-		std::vector<Channel> channels;
 		std::vector<int> clientSockets;
 };

@@ -13,8 +13,10 @@ class Client{
 		// void setNickname(std::string);
 		// void setSocketFd(int socket);
 		// void setOperator(bool status);
-	private :
 		std::string nickname;
 		int socketFd;
+	private :
+        std::string userHost;
+        std::string localHost;
 		bool op;
 };
