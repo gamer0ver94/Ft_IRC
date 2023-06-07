@@ -15,7 +15,7 @@ void Server::run() {
 
 void Server::createSocket() {
     std::cout << Yellow << "Creating Server Socket" << Reset << std::endl;
-    socketFd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    socketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (socketFd == -1) {
         throw std::runtime_error("Failed to create socket.");
     }
@@ -140,13 +140,9 @@ bool Server::parseNicknameMessage(const std::string& message, std::string& nickn
     while (iss >> word) {
         words.push_back(word);
     }
-    // Check if the message has the required format (NICK <nickname> USER <username>)
-    if (words.size() < 4 || words[0] != "NICK" || words[2] != "USER") {
-        return false;
-    }
     // Extract the nickname and username
-    nickname = words[1];
-    username = words[3];
+    nickname = words[3];
+    username = words[5];
     return true;
 }
 
@@ -158,11 +154,15 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
         std::string nickName;
         std::string userName;
         parseNicknameMessage(message, nickName, userName);
+		std::cout << "parsed nickname : " << nickName << userName << std::endl;
         Client *client = new Client(nickName, pollFds.fd);
         clients.insert(std::pair<int, Client*>(pollFds.fd, client));
         std::cout << clients.begin()->first << std::endl;
         // Send a welcome message to the client
-        std::string welcomeMessage = "001 " + clients[pollFds.fd]->nickname + ": " +  readFile("wel.txt")  + clients[pollFds.fd]->nickname + readFile("come.txt") + "\r\n";
+        std::string welcomeMessage = ":localhost 001 " + clients[pollFds.fd]->nickname + ": " +  readFile("wel.txt")  + client->nickname + readFile("come.txt") + "\r\n";
+		std::cout << welcomeMessage << std::endl;
+		std::cout << "pollfd = " << pollFds.fd << std::endl;
+		std::cout << "nickname: " << clients[pollFds.fd]->nickname << std::endl;
         int sendStatus = send(pollFds.fd, welcomeMessage.c_str(), welcomeMessage.length(), 0);
         std::cout << Blue << "Server Sended Response with: " << Reset << welcomeMessage << std::endl;
         if (sendStatus == -1) {
