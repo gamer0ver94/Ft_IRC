@@ -213,14 +213,13 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
     }
     else if (message.find("JOIN ") != std::string::npos) {
         for(std::map<int, Client*>::iterator it = clients.begin(); it != clients.end();++it){
-			if (it)
-            response = ":server.example.com 464 yourNickname :NickName already used please type <NICK new_nickname>\r\n";
-            int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
-            std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
-            if (sendStatus == -1) {
-                throw std::runtime_error("Failed to send data to client.");
-            }
-            return;
+            // response = ":server.example.com 464 yourNickname :NickName already used please type <NICK new_nickname>\r\n";
+            // int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+            // std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+            // if (sendStatus == -1) {
+            //     throw std::runtime_error("Failed to send data to client.");
+            // }
+            // return;
         }
         std::string channelName;
         parseChannelName(message, channelName);
