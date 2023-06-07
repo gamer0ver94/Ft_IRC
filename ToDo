@@ -1,0 +1,59 @@
+Step 1: Setting up the project
+
+Create a new C++ project in your preferred development environment.
+Set the project to use C++ 98 compatibility mode.
+Create the necessary project structure to organize your code.
+Step 2: Understanding the IRC Protocol
+
+Familiarize yourself with the IRC protocol specifications. You can find the RFC 1459 document that describes the IRC protocol in detail.
+Understand the basic concepts, such as client-server communication, message formats, and commands.
+Step 3: Handling TCP/IP Connections
+
+Use the socket() function to create a TCP/IP socket for the server.
+Set socket options using setsockopt() to make the socket reusable.
+Use getaddrinfo() to get the address information for binding the socket.
+Bind the socket to the specified port using bind().
+Use listen() to make the server listen for incoming connections.
+Accept incoming connections using accept() in a loop to handle multiple clients.
+Step 4: Implementing Non-blocking IO
+
+Use fcntl() or other equivalent functions to set the accepted socket file descriptors as non-blocking.
+Implement a single poll() (or equivalent) to handle all IO operations (read, write, listen) using non-blocking mode.
+Use poll() to check for activity on the socket file descriptors and handle read/write events.
+Step 5: Client Authentication and Basic Communication
+
+Implement a mechanism to authenticate clients using the provided password.
+Handle the NICK command to set a nickname for the client.
+Handle the USER command to set a username for the client.
+Implement JOIN command to allow clients to join channels.
+Implement private message functionality (PRIVMSG) to send and receive messages between clients.
+Step 6: Channel Operations
+
+Differentiate between regular users and operators.
+Implement channel-specific commands like KICK, INVITE, TOPIC, and MODE.
+Handle the KICK command to eject a client from the channel.
+Implement the INVITE command to invite a client to a channel.
+Handle the TOPIC command to change or view the channel topic.
+Implement the MODE command to change the channel's mode, including setting channel restrictions, passwords, operator privileges, and user limits.
+Step 7: Testing and Debugging
+
+Develop a test plan to cover all the required features and potential error scenarios.
+Test the server with the reference client to ensure proper functionality.
+Validate the server's behavior for different scenarios, such as partial data, low bandwidth, and edge cases.
+Debug and fix any issues or errors encountered during testing.
+Step 8: Code Refinement and Cleanliness
+
+Review your code for any potential improvements or optimizations.
+Refactor the code to improve readability, maintainability, and modularity.
+Ensure that your code follows proper coding standards and conventions.
+Remove any redundant or unused code segments.
+Add comments and documentation to enhance code understanding.
+Step 9: Final Testing and Deployment
+
+Perform thorough testing of the server, ensuring all features work as expected.
+Test the server with multiple clients simultaneously to verify its scalability.
+Prepare the final executable and documentation for submission.
+Deploy the server on the specified port, ensuring it runs without errors.
+Note: Throughout the development process, refer to the IRC protocol specifications and the given requirements to ensure you're implementing the necessary functionality accurately.
+
+Remember to consult the C++ 98 documentation and any additional resources you may need to implement the required functions and features successfully.
