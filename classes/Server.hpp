@@ -11,9 +11,12 @@
 #include <sys/poll.h>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include <string.h>
 #include "Channel.hpp"
 #include <stdlib.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
 // Text Colors
 #define Black "\033[30m"
 #define Red "\033[31m"
@@ -53,6 +56,7 @@ class Server{
 		void createSocket();
 		void bindSocket();
 		void listening();
+		std::string readFile(const std::string& filePath);
 		void handleCommunication(std::vector<pollfd>& pollFds);
 		void handleCommands(std::string message, pollfd& pollFds);
 		std::string handleCapabilityNegotiation(const std::string& message);
@@ -61,5 +65,5 @@ class Server{
 		bool parseChannelName(const std::string& message, std::string& channelName);
 		std::map<int, Client*> clients;
 		// std::vector<Client> clients;
-		std::vector<int> clientSockets;
+		// std::vector<int> clientSockets;
 };

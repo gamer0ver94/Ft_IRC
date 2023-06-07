@@ -15,7 +15,7 @@ void Server::run() {
 
 void Server::createSocket() {
     std::cout << Yellow << "Creating Server Socket" << Reset << std::endl;
-    socketFd = socket(AF_INET, SOCK_STREAM, 0);
+    socketFd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (socketFd == -1) {
         throw std::runtime_error("Failed to create socket.");
     }
@@ -24,6 +24,10 @@ void Server::createSocket() {
         close(socketFd);
         throw std::runtime_error("Failed to set SO_REUSEADDR option.");
     }
+    //testing to see if changes
+   if(fcntl(socketFd, F_SETFL, O_NONBLOCK)){
+        std::cout << "error fcntl " << std::endl;
+   }
     bindSocket();
     listening();
 }
@@ -61,6 +65,7 @@ void Server::listening() {
     pollfd serverPollFd;
     serverPollFd.fd = socketFd;
     serverPollFd.events = POLLIN;
+    serverPollFd.revents = 0;
     pollFds.push_back(serverPollFd);
     while (true) {
         // Wait for activity on any of the monitored file descriptors
@@ -68,39 +73,42 @@ void Server::listening() {
         if (pollResult == -1) {
             throw std::runtime_error("Error in poll system call.");
         }
-        // Check if there is a new client connection
-        if (pollFds[0].revents & POLLIN) {
-            int clientSocket = accept(socketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
-            if (clientSocket == -1) {
-                throw std::runtime_error("Failed to accept a client connection.");
+        // Check if there is a new client connection   
+        if (pollResult > 0){
+            if (pollFds[0].revents & (POLLIN)) {
+                int clientSocket = accept(socketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
+                if (clientSocket == -1) {
+                    throw std::runtime_error("Failed to accept a client connection.");
+                }
+                // Add the new client socket to the vector of pollfd structures
+                pollfd clientPollFd;
+                clientPollFd.fd = clientSocket;
+                clientPollFd.events = POLLIN;
+                clientPollFd.revents = 0;
+                pollFds.push_back(clientPollFd);
             }
-            // Add the new client socket to the vector of pollfd structures
-            pollfd clientPollFd;
-            clientPollFd.fd = clientSocket;
-            clientPollFd.events = POLLIN;
-            pollFds.push_back(clientPollFd);
         }
         handleCommunication(pollFds);
     }
-    // handleCommunication
 }
 
 void Server::handleCommunication(std::vector<pollfd>& pollFds) {
     // Iterate through all the file descriptors in the vector
-    for (size_t i = 1; i < pollFds.size(); ++i) {
+    for (int i = pollFds.size() - 1; i >= 1; --i) {
         if (pollFds[i].revents & POLLIN) {
             char buffer[1024];
             memset(buffer, 0, sizeof(buffer));
             // Receive Data from Client
-            int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
-            if (recvBytes == -1) {
+            int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer) - 1, 0);
+            if (recvBytes <= 0) {
                 throw std::runtime_error("Failed to receive data from client.");
             }
             else if (recvBytes == 0) {
                 // Client closed the connection
                 close(pollFds[i].fd);
                 pollFds.erase(pollFds.begin() + i);
-                --i;
+                // --i;
+                continue;
             }
             else {
                 buffer[recvBytes] = '\0';
@@ -116,7 +124,7 @@ std::string Server::handleCapabilityNegotiation(const std::string& message) {
     if (message.substr(0, 8) != "CAP LS\r\n")
         return "Unknown command.";
     // Prepare the list of supported capabilities
-    std::string capabilities = "multi-prefix message-tags account-notify extended-join";
+    std::string capabilities = "CAP LIST";
     // Construct the response
     std::string response = "CAP * LS :" + capabilities + "\r\n";
     return response;
@@ -154,8 +162,42 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
         clients.insert(std::pair<int, Client*>(pollFds.fd, client));
         std::cout << clients.begin()->first << std::endl;
         // Send a welcome message to the client
-        std::string welcomeMessage = ":SERVER 001 WELCOME :Welcome to the IRC server\r\n";
+        std::string welcomeMessage = "001 " + clients[pollFds.fd]->nickname + ": " +  readFile("wel.txt")  + clients[pollFds.fd]->nickname + readFile("come.txt") + "\r\n";
         int sendStatus = send(pollFds.fd, welcomeMessage.c_str(), welcomeMessage.length(), 0);
+        std::cout << Blue << "Server Sended Response with: " << Reset << welcomeMessage << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.find("WHOIS ") != std::string::npos){
+       response = ":localhost 311 " + clients[pollFds.fd]->nickname + " localhost " + clients[pollFds.fd]->nickname + " *\r\n";
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.find("CAP END\r\n") != std::string::npos){
+        response = ":localhost CAP * ACK :END\r\n";
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if(message.find("PING ") != std::string::npos){
+        // Handle the ping message
+        response = "PONG localhost\r\n";
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.find("MODE ") != std::string::npos){
+        response = ":localhost 221 " + clients[pollFds.fd]->nickname + " -I\r\n";
+        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
         if (sendStatus == -1) {
             throw std::runtime_error("Failed to send data to client.");
         }
@@ -170,6 +212,15 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
         }
     }
     else if (message.find("JOIN ") != std::string::npos) {
+        for(std::map<int, Client*>::iterator it = clients.begin(); it != clients.end();++it){
+            response = ":server.example.com 464 yourNickname :NickName already used please type <NICK new_nickname>\r\n";
+            int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+            std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+            if (sendStatus == -1) {
+                throw std::runtime_error("Failed to send data to client.");
+            }
+            return;
+        }
         std::string channelName;
         parseChannelName(message, channelName);
         // Handle join channel commands
@@ -180,7 +231,7 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
                 return;
             }
         }
-        std::cout << Red << clients[pollFds.fd]->nickname << " will create a channel" << Reset << std::endl;
+        std::cout << Yellow << clients[pollFds.fd]->nickname << " is creating a channel ..." << Reset << std::endl;
         channels.push_back(Channel(channelName, *clients[pollFds.fd]));
         for(std::vector<Channel>::iterator it = channels.begin(); it != channels.end();++it){
 			if ((*it).channelName == channelName){
@@ -192,11 +243,19 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
     }
     else if (message.substr(0, 4) == "PART ") {
         // Handle leave channel commands
-        // response = handleLeaveChannel(message);
+        response = "NOTICE " + clients[pollFds.fd]->nickname + " :CLOSE\r\n";
+        send(pollFds.fd,response.c_str(), response.length(), 0);
     }
 	else if (message.find("NICK ") != std::string::npos){
 		clients[pollFds.fd]->nickname = "another";
-		std::cout << "this client name now is " << clients[pollFds.fd]->nickname << std::endl;
+        response = "NICK another";
+        int sendStatus = send (pollFds.fd, response.c_str(), response.length(), 0);
+        if (sendStatus == -1){
+            std::cout << "error sendin nick" << std::endl;
+        }
+        else if (sendStatus > 0){
+		    std::cout << "this client name now is " << clients[pollFds.fd]->nickname << std::endl;
+        }
 	}
     else if (message.substr(0, 8) == "PRIVMSG "){
         // Handle private message commands
@@ -206,26 +265,37 @@ void Server::handleCommands(std::string message, pollfd& pollFds){
         std::string messageType;
 		std::string test;
         parseMessage(message, channelName, messageContent);
-        std::cout << clients[pollFds.fd]->nickname << " from channel -> " << channelName << " sended: " << messageContent << std::endl;
         for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
             if ((*it).channelName == channelName){
-            	std::cout << "CHANEL DOUND" << std::endl;
                 for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
-					std::cout << "tryed to send message to" << iter->second.nickname <<": " << messageContent << std::endl;
-					test = "PRIVMSG " + channelName + " :" + messageContent;
-					std::cout << Red << test << Reset << std::endl;
-					 send(iter->second.socketFd,test.c_str(),test.length(),0);
-					if(iter->second.socketFd < 0){
+                    if (iter->second.nickname == clients[pollFds.fd]->nickname){
+                        
+                    }
+                    else{
+					    test = "PRIVMSG " + channelName + " :" + messageContent + "\r\n";
+					     int sendStatus = send(iter->second.socketFd,test.c_str(),test.length(), 0);
+                         if (sendStatus == -1){
+                            std::cout << Red << "Failed to send message" << Reset << std::endl;
+                         }
+                         else if (sendStatus > 0){
+                            std::cout << Cyan<< clients[pollFds.fd]->nickname << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.nickname << Reset << std::endl;
+                         }
+					    if(iter->second.socketFd < 0){
 						std::cerr << "socket does not exit" << std::endl;
 					}
-                    std::cout << "LETS GO" << std::endl;
+                    }
                 }
             }
         }
+        //send notification of sended message
+        //need review not working
+        // std::string la = " message_sended";
+        // std::string sendedResponse = "PRIVMSG " + channelName + " :" + la;
+        // send(pollFds.fd, sendedResponse.c_str(), sendedResponse.length(), 0);
     }
     else {
         // Handle unrecognized commands
-        response = "Unknown command.";
+        response = "Unknown command.\r\n";
         int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
         if (sendStatus == -1) {
             throw std::runtime_error("Failed to send data to client.");
@@ -256,4 +326,16 @@ bool Server::parseMessage(std::string message, std::string &channelName, std::st
     std::size_t messageStartPos = message.find(":", channelEndPos);
     messageContent = message.substr(messageStartPos + 1);
     return true;
+}
+//Reads a file and output a string
+std::string Server::readFile(const std::string& filePath) {
+    std::ifstream file(filePath.c_str());
+    std::stringstream buffer;
+    
+    if (file) {
+        buffer << file.rdbuf();
+        file.close();
+    }
+    
+    return buffer.str();
 }
