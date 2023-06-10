@@ -5,7 +5,7 @@ CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++98 -g
 
 SRC = sources/main.cpp sources/Server.cpp \
-		sources/Channel.cpp sources/Client.cpp
+		sources/Channel.cpp sources/Client.cpp sources/CommandHandler.cpp
 
 OBJS = $(SRC:.cpp=.o)
 

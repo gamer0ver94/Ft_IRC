@@ -1,15 +1,20 @@
 #pragma once
 #include <iostream>
 #include "../classes/Server.hpp"
+#include "../classes/Client.hpp"
 
 class Server;
 
 class CommandHandler{
     public:
-        static std::string handleCommand(Server& server, std::string message, std::string &response);
+        static void handleCommand(Server& server, int &clientFd, std::string message, std::string &response);
     private:
-        std::string readFile(const std::string& filePath);
-        bool parseChannelName(const std::string& message, std::string& channelName);
-        bool parseMessage(std::string message, std::string &channelName, std::string &messageContent);
-        bool parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName);
+        static int getMessageType(std::string message);
+        static std::string handleCapabilityNegotiation(const std::string& message);
+        static std::string readFile(const std::string& filePath);
+        static bool parseChannelName(const std::string& message, std::string& channelName);
+        static bool parseMessage(std::string message, std::string &channelName, std::string &messageContent);
+        static bool parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName);
+        static bool doesChannelExist(std::vector<Channel> &channels, std::string channelName);
 };
+

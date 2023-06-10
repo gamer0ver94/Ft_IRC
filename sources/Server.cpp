@@ -63,7 +63,6 @@ void Server::listening() {
     listen(socketFd, 5);
     std::cout << Green << "Listening Clients Connections ..." << Reset << std::endl;
     // Create a vector of pollfd structures to hold file descriptors and events
-    std::vector<pollfd> pollFds;
     pollfd serverPollFd;
     serverPollFd.fd = socketFd;
     serverPollFd.events = POLLIN;
@@ -115,97 +114,93 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
             else {
                 buffer[recvBytes] = '\0';
                 std::string message(buffer);
-                handleClientMessage(message, pollFds[i]);
+                handleClientMessage(message, pollFds[i].fd);
             }
         }
     }
 }
 
-std::string Server::handleCapabilityNegotiation(const std::string& message) {
-    // Check if the received message is CAP LS
-    if (message.substr(0, 8) != "CAP LS\r\n")
-        return "Unknown command.";
-    // Prepare the list of supported capabilities
-    std::string capabilities = "CAP LIST";
-    // Construct the response
-    std::string response = "CAP * LS :" + capabilities + "\r\n";
-    return response;
-}
-
-// Function to parse the nickName message
-bool Server::parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName){
-    // Split the message into words using whitespace as delimiter
-    std::istringstream iss(message);
-    std::string word;
-    std::vector<std::string> words;
-    while (iss >> word) {
-        words.push_back(word);
-    }
-    for (size_t i = 0; i < words.size(); i++){
-        if (words[i] == "NICK"){
-            nickName = words[i + 1];
-        }
-        else if (words[i] == "USER"){
-            username = words[i + 1];
-            hostName = words[i + 2];
-            serverHostName = words[i + 3];
-            realName = words[i + 4];
-            return true;
-        }
-    }
-    return false;
-}
-
-// void Server::handleClientMessage(std::string message, pollfd& pollFds){
-//     std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
-//     std::string response;
-//     CommandHandler::handleCommand(*this, message, response);
-//     //send
+// // Function to parse the nickName message
+// bool Server::parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName){
+//     // Split the message into words using whitespace as delimiter
+//     std::istringstream iss(message);
+//     std::string word;
+//     std::vector<std::string> words;
+//     while (iss >> word) {
+//         words.push_back(word);
+//     }
+//     for (size_t i = 0; i < words.size(); i++){
+//         if (words[i] == "NICK"){
+//             nickName = words[i + 1];
+//         }
+//         else if (words[i] == "USER"){
+//             username = words[i + 1];
+//             hostName = words[i + 2];
+//             serverHostName = words[i + 3];
+//             realName = words[i + 4];
+//             return true;
+//         }
+//     }
+//     return false;
 // }
 
-bool Server::parseChannelName(const std::string& message, std::string& channelName)
-{
-    // Split the message into words using whitespace as delimiter
-    std::istringstream iss(message);
-    std::string word;
-    std::vector<std::string> words;
-    while (iss >> word) {
-        words.push_back(word);
+void Server::handleClientMessage(std::string message, int& clientFd){
+    int sendingStatus;
+    std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
+    std::string response;
+    CommandHandler::handleCommand(*this, clientFd, message, response);
+    sendingStatus = send(clientFd, response.c_str(), response.length(), 0);
+    if (sendingStatus == -1){
+        std::cout << Red << "Error Sending response from the server" << Reset << std::endl;
     }
-    // Extract the nickName and username
-    channelName = words[1];
-    return true;
-}
-bool Server::parseMessage(std::string message, std::string &channelName, std::string &messageContent){
-     // Find the position of the channel
-   std::size_t channelStartPos = message.find("#");
-    std::size_t channelEndPos = message.find(" ", channelStartPos);
-    channelName = message.substr(channelStartPos, channelEndPos - channelStartPos);
-	// std::cout << "testomg " << channelName << std::endl;
-    // Find the position of the message
-    std::size_t messageStartPos = message.find(":", channelEndPos);
-    messageContent = message.substr(messageStartPos + 1);
-    return true;
-}
-//Reads a file and output a string
-std::string Server::readFile(const std::string& filePath) {
-    std::ifstream file(filePath.c_str());
-    std::stringstream buffer;
-    
-    if (file) {
-        buffer << file.rdbuf();
-        file.close();
+    else{
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
     }
-    
-    return buffer.str();
 }
 
+// bool Server::parseChannelName(const std::string& message, std::string& channelName)
+// {
+//     // Split the message into words using whitespace as delimiter
+//     std::istringstream iss(message);
+//     std::string word;
+//     std::vector<std::string> words;
+//     while (iss >> word) {
+//         words.push_back(word);
+//     }
+//     // Extract the nickName and username
+//     channelName = words[1];
+//     return true;
+// }
+// bool Server::parseMessage(std::string message, std::string &channelName, std::string &messageContent){
+//      // Find the position of the channel
+//    std::size_t channelStartPos = message.find("#");
+//     std::size_t channelEndPos = message.find(" ", channelStartPos);
+//     channelName = message.substr(channelStartPos, channelEndPos - channelStartPos);
+// 	// std::cout << "testomg " << channelName << std::endl;
+//     // Find the position of the message
+//     std::size_t messageStartPos = message.find(":", channelEndPos);
+//     messageContent = message.substr(messageStartPos + 1);
+//     return true;
+// }
+// //Reads a file and output a string
+// std::string Server::readFile(const std::string& filePath) {
+//     std::ifstream file(filePath.c_str());
+//     std::stringstream buffer;
+    
+//     if (file) {
+//         buffer << file.rdbuf();
+//         file.close();
+//     }
+    
+//     return buffer.str();
+// }
 
 
 
 
 
-void Server::handleClientMessage(std::string message, pollfd& pollFds){
+
+/*void Server::handleClientMessage(std::string message, pollfd& pollFds){
     std::string response;
     std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
     if (message.find("NICK ") != std::string::npos && message.find("USER ") != std::string::npos) {
@@ -245,7 +240,7 @@ void Server::handleClientMessage(std::string message, pollfd& pollFds){
         //
     }
     else if (message.find("WHOIS ") != std::string::npos){
-        /*The client sends a WHOIS command to the server for a specific user.
+        The client sends a WHOIS command to the server for a specific user.
 
 Client sends: WHOIS username
 The server acknowledges the WHOIS command and starts gathering information.
@@ -260,7 +255,7 @@ If the user is an IRC operator, the server may provide additional details.
 Server responds: :server-name 313 your-nick target-nick :is an IRC Operator
 The server concludes the WHOIS response.
 
-Server responds: :server-name 318 your-nick target-nick :End of WHOIS list.*/
+Server responds: :server-name 318 your-nick target-nick :End of WHOIS list.
        response = ":" + this->hostName + " 311 " + clients[pollFds.fd]->nickName + " localhost " + clients[pollFds.fd]->nickName + " *\r\n";
         int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
         std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
@@ -404,4 +399,4 @@ Server responds: :server-name 318 your-nick target-nick :End of WHOIS list.*/
             std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
         }
     }
-}
+}*/
