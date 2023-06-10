@@ -37,6 +37,7 @@
 #define BgWhite "\033[47m"
 // Reset color
 #define Reset "\033[0m"
+#include "../classes/CommandHandler.hpp"
 
 class Server{
 	public :
@@ -58,12 +59,13 @@ class Server{
 		void listening();
 		std::string readFile(const std::string& filePath);
 		void handleCommunication(std::vector<pollfd>& pollFds);
-		void handleCommands(std::string message, pollfd& pollFds);
+		void handleClientMessage(std::string message, pollfd& pollFds);
 		std::string handleCapabilityNegotiation(const std::string& message);
-		bool parseNicknameMessage(const std::string& message, std::string& nickname, std::string& username);
+		bool parseNickNameMessage(const std::string& message, std::string& nickname, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName);
 		bool parseMessage(std::string message, std::string &channelName, std::string &messageContent);
 		bool parseChannelName(const std::string& message, std::string& channelName);
 		std::map<int, Client*> clients;
+		std::string hostName;
 		// std::vector<Client> clients;
 		// std::vector<int> clientSockets;
 };

@@ -3,7 +3,7 @@
 #include <unistd.h>
 class Client{
 	public :
-		Client(std::string nickName, int socket);
+		Client(int socket, std::string nickName, std::string userName, std::string hostName, std::string serverHostName, std::string realName);
 		~Client();
 	// Getters
 		// std::string getNickname();
@@ -13,8 +13,12 @@ class Client{
 		// void setNickname(std::string);
 		// void setSocketFd(int socket);
 		// void setOperator(bool status);
-		std::string nickname;
 		int socketFd;
+		std::string nickName;
+		std::string userName;
+		std::string hostName;
+		std::string serverHostName;
+		std::string realName;
 	private :
         std::string userHost;
         std::string localHost;

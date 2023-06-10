@@ -59,3 +59,11 @@ Deploy the server on the specified port, ensuring it runs without errors.
 Note: Throughout the development process, refer to the IRC protocol specifications and the given requirements to ensure you're implementing the necessary functionality accurately.
 
 Remember to consult the C++ 98 documentation and any additional resources you may need to implement the required functions and features successfully.
+
+
+/NOTES
+
+The server at the end of connection need to make sure that the nickname does not exit otherwise does not conenct
+
+part needs to remove clinet if it is the last client then remove the channel from the class
+when create a channel need to change the op status from the client to true when he get out of the channel if there is still clients in there then pass the op to true and search for the first client on to give him the opstatus true

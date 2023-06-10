@@ -1,7 +1,7 @@
 #include "../classes/Server.hpp"
 
 Server::Server(unsigned int port, std::string password) :
-    port(port), password(password), socketFd(0) {
+    port(port), password(password), socketFd(0), hostName("localhost") {
     std::cout << "Server Constructor" << std::endl;
 }
 
@@ -40,6 +40,8 @@ void Server::bindSocket() {
         socketAddr.sin_family = AF_INET;
         socketAddr.sin_port = htons(port);
         socketAddr.sin_addr.s_addr = htons(INADDR_ANY);
+        //Give server new name baseon ip
+        hostName = inet_ntoa(socketAddr.sin_addr);
         // Bind the Socket
         int bindStatus = bind(socketFd, (struct sockaddr*)&socketAddr, sizeof(socketAddr));
         if (bindStatus == -1) {
@@ -113,7 +115,7 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
             else {
                 buffer[recvBytes] = '\0';
                 std::string message(buffer);
-                handleCommands(message, pollFds[i]);
+                handleClientMessage(message, pollFds[i]);
             }
         }
     }
@@ -130,9 +132,8 @@ std::string Server::handleCapabilityNegotiation(const std::string& message) {
     return response;
 }
 
-// Function to parse the nickname message
-bool Server::parseNicknameMessage(const std::string& message, std::string& nickname, std::string& username)
-{
+// Function to parse the nickName message
+bool Server::parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName){
     // Split the message into words using whitespace as delimiter
     std::istringstream iss(message);
     std::string word;
@@ -140,168 +141,27 @@ bool Server::parseNicknameMessage(const std::string& message, std::string& nickn
     while (iss >> word) {
         words.push_back(word);
     }
-    // Extract the nickname and username
-    nickname = words[3];
-    username = words[5];
-    return true;
+    for (size_t i = 0; i < words.size(); i++){
+        if (words[i] == "NICK"){
+            nickName = words[i + 1];
+        }
+        else if (words[i] == "USER"){
+            username = words[i + 1];
+            hostName = words[i + 2];
+            serverHostName = words[i + 3];
+            realName = words[i + 4];
+            return true;
+        }
+    }
+    return false;
 }
 
-void Server::handleCommands(std::string message, pollfd& pollFds){
-    std::string response;
-    std::cout << Green << "Received Data From Client: " << Reset << message << std::endl;
-    if (message.find("NICK ") != std::string::npos && message.find("USER ") != std::string::npos) {
-        // Handle the user information and connection establishment
-        std::string nickName;
-        std::string userName;
-        parseNicknameMessage(message, nickName, userName);
-		std::cout << "parsed nickname : " << nickName << userName << std::endl;
-        Client *client = new Client(nickName, pollFds.fd);
-        clients.insert(std::pair<int, Client*>(pollFds.fd, client));
-        std::cout << clients.begin()->first << std::endl;
-        // Send a welcome message to the client
-        std::string welcomeMessage = ":localhost 001 " + clients[pollFds.fd]->nickname + ": " +  readFile("wel.txt")  + client->nickname + readFile("come.txt") + "\r\n";
-		std::cout << welcomeMessage << std::endl;
-		std::cout << "pollfd = " << pollFds.fd << std::endl;
-		std::cout << "nickname: " << clients[pollFds.fd]->nickname << std::endl;
-        int sendStatus = send(pollFds.fd, welcomeMessage.c_str(), welcomeMessage.length(), 0);
-        std::cout << Blue << "Server Sended Response with: " << Reset << welcomeMessage << std::endl;
-        if (sendStatus == -1) {
-            throw std::runtime_error("Failed to send data to client.");
-        }
-    }
-    else if (message.find("WHOIS ") != std::string::npos){
-       response = ":localhost 311 " + clients[pollFds.fd]->nickname + " localhost " + clients[pollFds.fd]->nickname + " *\r\n";
-        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
-        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
-        if (sendStatus == -1) {
-            throw std::runtime_error("Failed to send data to client.");
-        }
-    }
-    else if (message.find("CAP END\r\n") != std::string::npos){
-        response = ":localhost CAP * ACK :END\r\n";
-        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
-        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
-        if (sendStatus == -1) {
-            throw std::runtime_error("Failed to send data to client.");
-        }
-    }
-    else if(message.find("PING ") != std::string::npos){
-        // Handle the ping message
-        response = "PONG localhost\r\n";
-        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
-        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
-        if (sendStatus == -1) {
-            throw std::runtime_error("Failed to send data to client.");
-        }
-    }
-    else if (message.find("MODE ") != std::string::npos){
-        response = ":localhost 221 " + clients[pollFds.fd]->nickname + " -I\r\n";
-        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
-        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
-        if (sendStatus == -1) {
-            throw std::runtime_error("Failed to send data to client.");
-        }
-    }
-    else if (message.find("CAP ") != std::string::npos) {
-        // Handle capability negotiation commands
-        response = handleCapabilityNegotiation(message);
-        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
-        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
-        if (sendStatus == -1) {
-            throw std::runtime_error("Failed to send data to client.");
-        }
-    }
-    else if (message.find("JOIN ") != std::string::npos) {
-        for(std::map<int, Client*>::iterator it = clients.begin(); it != clients.end();++it){
-            // response = ":server.example.com 464 yourNickname :NickName already used please type <NICK new_nickname>\r\n";
-            // int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
-            // std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
-            // if (sendStatus == -1) {
-            //     throw std::runtime_error("Failed to send data to client.");
-            // }
-            // return;
-        }
-        std::string channelName;
-        parseChannelName(message, channelName);
-        // Handle join channel commands
-        for(std::vector<Channel>::iterator it = channels.begin(); it != channels.end();++it){
-            if ((*it).channelName == channelName){
-                std::cout << Cyan << clients[pollFds.fd]->nickname << " joined channel :" << channelName << Reset << std::endl;
-                (*it).invitedClients.insert(std::make_pair<std::string, Client>(clients[pollFds.fd]->nickname, *clients[pollFds.fd]));
-                return;
-            }
-        }
-        std::cout << Yellow << clients[pollFds.fd]->nickname << " is creating a channel ..." << Reset << std::endl;
-        channels.push_back(Channel(channelName, *clients[pollFds.fd]));
-        for(std::vector<Channel>::iterator it = channels.begin(); it != channels.end();++it){
-			if ((*it).channelName == channelName){
-				(*it).invitedClients.insert(std::make_pair<std::string, Client>(clients[pollFds.fd]->nickname, *clients[pollFds.fd]));
-			}
-		}
-        // Channel la(channelName, clients[pollFds.fd]);
-        // response = handleJoinChannel(message);
-    }
-    else if (message.substr(0, 4) == "PART ") {
-        // Handle leave channel commands
-        response = "NOTICE " + clients[pollFds.fd]->nickname + " :CLOSE\r\n";
-        send(pollFds.fd,response.c_str(), response.length(), 0);
-    }
-	else if (message.find("NICK ") != std::string::npos){
-		clients[pollFds.fd]->nickname = "another";
-        response = "NICK another";
-        int sendStatus = send (pollFds.fd, response.c_str(), response.length(), 0);
-        if (sendStatus == -1){
-            std::cout << "error sendin nick" << std::endl;
-        }
-        else if (sendStatus > 0){
-		    std::cout << "this client name now is " << clients[pollFds.fd]->nickname << std::endl;
-        }
-	}
-    else if (message.substr(0, 8) == "PRIVMSG "){
-        // Handle private message commands
-        std::string senderNickname;
-        std::string messageContent;
-        std::string channelName;
-        std::string messageType;
-		std::string test;
-        parseMessage(message, channelName, messageContent);
-        for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
-            if ((*it).channelName == channelName){
-                for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
-                    if (iter->second.nickname == clients[pollFds.fd]->nickname){
-                        
-                    }
-                    else{
-					    test = "PRIVMSG " + channelName + " :" + messageContent + "\r\n";
-					     int sendStatus = send(iter->second.socketFd,test.c_str(),test.length(), 0);
-                         if (sendStatus <= 0){
-                            std::cout << Red << "Failed to send message" << Reset << std::endl;
-                         }
-                         else if (sendStatus > 0){
-                            std::cout << Cyan<< clients[pollFds.fd]->nickname << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.nickname << Reset << std::endl;
-                         }
-					    if(iter->second.socketFd < 0){
-						std::cerr << "socket does not exit" << std::endl;
-					}
-                    }
-                }
-            }
-        }
-        //send notification of sended message
-        //need review not working
-        // std::string la = " message_sended";
-        // std::string sendedResponse = "PRIVMSG " + channelName + " :" + la;
-        // send(pollFds.fd, sendedResponse.c_str(), sendedResponse.length(), 0);
-    }
-    else {
-        // Handle unrecognized commands
-        response = "Unknown command.\r\n";
-        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
-        if (sendStatus == -1) {
-            throw std::runtime_error("Failed to send data to client.");
-        }
-    }
-}
+// void Server::handleClientMessage(std::string message, pollfd& pollFds){
+//     std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
+//     std::string response;
+//     CommandHandler::handleCommand(*this, message, response);
+//     //send
+// }
 
 bool Server::parseChannelName(const std::string& message, std::string& channelName)
 {
@@ -312,7 +172,7 @@ bool Server::parseChannelName(const std::string& message, std::string& channelNa
     while (iss >> word) {
         words.push_back(word);
     }
-    // Extract the nickname and username
+    // Extract the nickName and username
     channelName = words[1];
     return true;
 }
@@ -338,4 +198,210 @@ std::string Server::readFile(const std::string& filePath) {
     }
     
     return buffer.str();
+}
+
+
+
+
+
+
+void Server::handleClientMessage(std::string message, pollfd& pollFds){
+    std::string response;
+    std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
+    if (message.find("NICK ") != std::string::npos && message.find("USER ") != std::string::npos) {
+        // Handle the user information and connection establishment
+        std::string nickName;
+        std::string userName;
+        std::string hostName;
+        std::string serverHostName;
+        std::string realName;
+        parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName);
+        Client *client = new Client(pollFds.fd, nickName, userName, hostName, serverHostName, realName);
+        clients.insert(std::pair<int, Client*>(pollFds.fd, client));
+        hostName = "briths";
+        // Send a welcome message to the client
+        std::string welcomeMessage = ":" + this->hostName + " 001 " + clients[pollFds.fd]->nickName + " :" +  readFile("wel.txt")  + " " + client->nickName + " " + readFile("come.txt") + "\r\n";
+        int sendStatus = send(pollFds.fd, welcomeMessage.c_str(), welcomeMessage.length(), 0);
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << welcomeMessage << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.find("NICK ") != std::string::npos){
+        //verify if is empty and if is in use
+        std::istringstream iss(message);
+        std::string word;
+        std::vector<std::string> words;
+        while (iss >> word) {
+            words.push_back(word);
+        }
+        clients[pollFds.fd]->nickName = words[1];
+        response = ":" + this->hostName + " 001 " + clients[pollFds.fd]->nickName + " :Name changed to " + clients[pollFds.fd]->nickName + "\r\n";
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+        //
+    }
+    else if (message.find("WHOIS ") != std::string::npos){
+        /*The client sends a WHOIS command to the server for a specific user.
+
+Client sends: WHOIS username
+The server acknowledges the WHOIS command and starts gathering information.
+
+Server responds: :server-name 311 your-nick target-nick target-user target-host * :target-real-name
+The server provides additional information about the user, such as server, channels, and server operator status.
+
+Server responds: :server-name 312 your-nick target-nick target-server :server-info
+Server responds: :server-name 319 your-nick target-nick :@#channel1 +#channel2
+If the user is an IRC operator, the server may provide additional details.
+
+Server responds: :server-name 313 your-nick target-nick :is an IRC Operator
+The server concludes the WHOIS response.
+
+Server responds: :server-name 318 your-nick target-nick :End of WHOIS list.*/
+       response = ":" + this->hostName + " 311 " + clients[pollFds.fd]->nickName + " localhost " + clients[pollFds.fd]->nickName + " *\r\n";
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.find("CAP END\r\n") != std::string::npos){
+        response = ":localhost CAP * ACK :END\r\n";
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if(message.find("PING ") != std::string::npos){
+        // Handle the ping message
+        response = "PONG " + this->hostName + "\r\n";
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.find("MODE ") != std::string::npos){
+        response = ":" + this->hostName + " 221" + clients[pollFds.fd]->nickName + " -I\r\n";
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.find("CAP ") != std::string::npos) {
+        // Handle capability negotiation commands
+        response = handleCapabilityNegotiation(message);
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+    }
+    else if (message.find("JOIN ") != std::string::npos) {
+        for(std::map<int, Client*>::iterator it = clients.begin(); it != clients.end();++it){
+            // response = ":server.example.com 464 yournickName :nickName already used please type <NICK new_nickName>\r\n";
+            // int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+            // std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+            // if (sendStatus == -1) {
+            //     throw std::runtime_error("Failed to send data to client.");
+            // }
+            // return;
+        }
+        std::string channelName;
+        parseChannelName(message, channelName);
+        // Handle join channel commands
+        std::cout << Cyan << "###" << clients[pollFds.fd]->nickName << " joined :" << channelName << "###" << Reset << std::endl;
+        channels.push_back(Channel(channelName, *clients[pollFds.fd]));
+        for(std::vector<Channel>::iterator it = channels.begin(); it != channels.end();++it){
+			if ((*it).channelName == channelName){
+				(*it).invitedClients.insert(std::make_pair<std::string, Client>(clients[pollFds.fd]->nickName, *clients[pollFds.fd]));
+                // repeated code
+			}
+		}
+        // Channel la(channelName, clients[pollFds.fd]);
+        std::string response2 = ":" + clients[pollFds.fd]->nickName + "!~" + clients[pollFds.fd]->userName + "@" + hostName + " JOIN " + channelName + "\r\n";
+        response = ":" + this->hostName + " 332 " + clients[pollFds.fd]->nickName + " " + channelName + " :Welcome to " + channelName + "\r\n";
+        int sendStatus = send (pollFds.fd, response.c_str(), response.length(), 0);
+        if (sendStatus == -1){
+            std::cout << "error sendin nick" << std::endl;
+        }
+        else if (sendStatus > 0){
+		    std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+            sendStatus = send (pollFds.fd, response2.c_str(), response2.length(), 0);
+        }
+    }
+    else if (message.find("PART ") != std::string::npos) {
+        // Handle leave channel commands
+        response = "PART\r\n";
+       int sendStatus = send(pollFds.fd,response.c_str(), response.length(), 0);
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+        else{
+            std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+        }
+    }
+	else if (message.find("NICK ") != std::string::npos){
+		clients[pollFds.fd]->nickName = "another";
+        response = "NICK another";
+        int sendStatus = send (pollFds.fd, response.c_str(), response.length(), 0);
+        if (sendStatus == -1){
+            std::cout << "error sendin nick" << std::endl;
+        }
+        else if (sendStatus > 0){
+		    std::cout << Yellow<< "Client changed nickname to <" << clients[pollFds.fd]->nickName << ">" << Reset<< std::endl;
+        }
+	}
+    else if (message.substr(0, 8) == "PRIVMSG "){
+        // Handle private message commands
+        std::string sendernickName;
+        std::string messageContent;
+        std::string channelName;
+        std::string messageType;
+		std::string test;
+        parseMessage(message, channelName, messageContent);
+        for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
+            if ((*it).channelName == channelName){
+                for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
+                    if (iter->second.nickName == clients[pollFds.fd]->nickName){
+                        
+                    }
+                    else{
+					    test = ":" + clients[pollFds.fd]->nickName + "!~" + clients[pollFds.fd]->userName + " PRIVMSG " + channelName + " :" + messageContent + "\r\n";
+					     int sendStatus = send(iter->second.socketFd,test.c_str(),test.length(), 0);
+                         if (sendStatus <= 0){
+                            std::cout << Red << "Failed to send message" << Reset << std::endl;
+                         }
+                         else if (sendStatus > 0){
+                            std::cout << Cyan<< clients[pollFds.fd]->nickName << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.nickName << Reset << std::endl;
+                         }
+					    if(iter->second.socketFd < 0){
+						std::cerr << "socket does not exit" << std::endl;
+					}
+                    }
+                }
+            }
+        }
+        //send notification of sended message
+        //need review not working
+        // std::string la = " message_sended";
+        // std::string sendedResponse = "PRIVMSG " + channelName + " :" + la;
+        // send(pollFds.fd, sendedResponse.c_str(), sendedResponse.length(), 0);
+    }
+    else {
+        // Handle unrecognized commands
+        response = "Unknown command.\r\n";
+        int sendStatus = send(pollFds.fd, response.c_str(), response.length(), 0);
+        if (sendStatus == -1) {
+            throw std::runtime_error("Failed to send data to client.");
+        }
+        else{
+            std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+        }
+    }
 }
