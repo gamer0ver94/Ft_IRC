@@ -6,12 +6,14 @@ void Error(std::string str)
 	exit (0);
 }
 
-int reserved_port(unsigned int nb)
+int reserved_port(int nb)
 {
-	unsigned int res[] = {20, 21, 22, 25, 53, 80, 443, 110, 143, 3389};
+	int res[] = {20, 21, 22, 25, 53, 80, 443, 110, 143, 3389};
+	if (nb <= 0)
+		Error("Port can't be equal at 0 or negative");
 	for(int i = 0; i < 10; i++)
 		if (nb == res[i] || nb == 0)
-			return (0);
+			Error("Error : Port reserved");
 	return (1);
 }
 
@@ -22,14 +24,12 @@ int main(int argc, char**argv){
 	}
 	try{
 		std::string password(argv[2]);
-		unsigned int port = atoi(argv[1]);
+		int port = atoi(argv[1]);
 		if (reserved_port(port))
 		{
 			Server *server = new Server(port, password);
 			server->run();
 		}
-		else
-			Error("Bad port input");
 	}
 	catch(std::exception &e){
 		std::cerr << "Error: " << e.what() << std::endl;
