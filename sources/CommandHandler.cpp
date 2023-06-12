@@ -9,6 +9,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
     std::string hostName;
     std::string userName;
     std::string nickName;
+    std::string password;
     std::istringstream iss(message);
     std::string word;
     std::vector<std::string>words;
@@ -19,13 +20,23 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
     std::string response2;
     std::vector<Channel>::iterator it;
     std::map<std::string, Client>::iterator iter;
-    int i = 0;
     switch (messageType){
         case 0 :    //CommandCAP
              response = handleCapabilityNegotiation(message);
             break;
         case 1 :    //CommandNICK/USER
-            parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName);
+            parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password);
+            std::cout << server.password << "  " << password << std::endl;
+            if (password.empty() || server.password != password){
+                response = "ERROR :Connection refused: Password Does Not Match\r\n";
+                return;
+            }
+            for (std::map<int, Client*>::iterator it = server.clients.begin(); it != server.clients.end(); ++it){
+                if (it->second->nickName == nickName){
+                    response = "ERROR :Connection refused: NickName already taken\r\n";
+                    return;
+                }
+            }
             client = new Client(clientFd, nickName, userName, hostName, serverHostName, realName);
             server.clients.insert(std::pair<int, Client*>(clientFd, client));
             response = ":" + server.hostName + " 001 " + server.clients[clientFd]->nickName + " :" +  readFile("wel.txt")  + " " + client->nickName + " " + readFile("come.txt") + "\r\n";
@@ -45,6 +56,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             break;
         case 5 :
             response = "PONG " + server.hostName + "\r\n";
+            server.printData();
             break;
         case 6 :
             response = ":" + server.hostName + " 221" + server.clients[clientFd]->nickName + " -I\r\n";
@@ -52,11 +64,17 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
         case 7 :
             response = handleCapabilityNegotiation(message);
             break;
-        case 8 :
+        case 8 : // Command Join
             parseChannelName(message, channelName);
             if (!doesChannelExist(server.channels, channelName)){
                  std::cout << Cyan << "###" << server.clients[clientFd]->nickName << " created :" << channelName << "###" << Reset << std::endl;
                 server.channels.push_back(Channel(channelName, *server.clients[clientFd]));
+                // Search the channel end atribute the op to the client who created the channel
+                for(std::vector<Channel>::iterator it = server.channels.begin(); it != server.channels.end(); ++it){
+                    if (it->channelName == channelName){
+                        it->opClientFd.push_back(clientFd);
+                    }
+                }
             }
             else{
                 std::cout << Cyan << "###" << server.clients[clientFd]->nickName << " joined :" << channelName << "###" << Reset << std::endl;
@@ -76,8 +94,30 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 	    	    std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
             }
             break;
-        case 9 :
-            response = "PART\r\n";
+        case 9 : // Command Part
+        //send this message to all client after deleting this client of the channel
+            parseChannelName(message, channelName);
+            nickName = server.clients[clientFd]->nickName;
+            response = ":" + nickName + " PART " + channelName + "\r\n";
+            for (it = server.channels.begin();it != server.channels.end(); ++it){
+                if ((*it).channelName == channelName){
+                    (*it).invitedClients.erase(nickName);
+                    for(iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
+                        int sendStatus = send(iter->second.socketFd,response.c_str(),response.length(), 0);
+                        if (sendStatus <= 0){
+                            std::cout << Red << "Failed to send message" << Reset << std::endl;
+                        }
+                        else if (sendStatus > 0){
+                            std::cout << Cyan<< server.clients[clientFd]->nickName << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.nickName << Reset << std::endl;
+                        }
+                    }
+                    if ((*it).invitedClients.empty()) {
+                        it = server.channels.erase(it);
+                        --it;
+                    }
+                }
+            }
+            response = ":" + nickName + "!" + nickName + "@" + server.hostName + " Part " + channelName + "\r\n";
             break;
         case 10 :
             parseMessage(message, channelName, messageContent);
@@ -90,8 +130,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                         else{
 	    				    response = ":" + server.clients[clientFd]->nickName + "!~" + server.clients[clientFd]->userName + " PRIVMSG " + channelName + " :" + messageContent + "\r\n";
                             int sendStatus = send(iter->second.socketFd,response.c_str(),response.length(), 0);
-                            std::cout << i << std::endl;
-                            i++;
                             if (sendStatus <= 0){
                                 std::cout << Red << "Failed to send message" << Reset << std::endl;
                             }
@@ -105,7 +143,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     }
                 }
             }
-            response = ":NOTICE " + channelName + " :          message sended!\r\n";
+            response = ":" + server.hostName + " NOTICE " + channelName + " :Message sended succefully!\r\n";
             break;
         default :
             response = "Unknown command.\r\n";
@@ -151,7 +189,7 @@ std::string CommandHandler::readFile(const std::string& filePath) {
     return buffer.str();
 }
 
-bool CommandHandler::parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName){
+bool CommandHandler::parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName, std::string &password){
     // Split the message into words using whitespace as delimiter
     std::istringstream iss(message);
     std::string word;
@@ -160,7 +198,10 @@ bool CommandHandler::parseNickNameMessage(const std::string& message, std::strin
         words.push_back(word);
     }
     for (size_t i = 0; i < words.size(); i++){
-        if (words[i] == "NICK"){
+        if (words[i] == "PASS"){
+            password = words[i + 1];
+        }
+        else if (words[i] == "NICK"){
             nickName = words[i + 1];
         }
         else if (words[i] == "USER"){

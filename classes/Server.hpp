@@ -53,6 +53,7 @@ class Server{
 		std::vector<pollfd> pollFds;
 		std::map<int, Client*> clients;
 		std::vector<Channel> channels;
+		void printData(void);
 	private :
 		// Properties
 		struct sockaddr_in socketAddr;
@@ -63,10 +64,4 @@ class Server{
 		std::string readFile(const std::string& filePath);
 		void handleCommunication(std::vector<pollfd>& pollFds);
 		void handleClientMessage(std::string message, int& clientFd);
-		// std::string handleCapabilityNegotiation(const std::string& message);
-		// bool parseNickNameMessage(const std::string& message, std::string& nickname, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName);
-		// bool parseMessage(std::string message, std::string &channelName, std::string &messageContent);
-		// bool parseChannelName(const std::string& message, std::string& channelName);
-		// std::vector<Client> clients;
-		// std::vector<int> clientSockets;
 };

@@ -1,7 +1,9 @@
 #include "../classes/Channel.hpp"
 #include "../classes/Server.hpp"
-Channel::Channel(std::string name, Client op) : channelName(name), opClient(op){
+Channel::Channel(std::string name, Client op) :
+channelName(name), iMode(false), tMode(false), kMode(false){
 	std::cout << Green << "Channel " << channelName << " created!" << Reset << std::endl;
+	(void)op;
 }
 Channel::~Channel(){
 }
