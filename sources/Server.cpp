@@ -129,17 +129,20 @@ void Server::handleClientMessage(std::string message, int& clientFd){
     if (response == "ERROR :Connection refused: NickName already taken"){
         for (std::vector<pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it){
             if (it->fd == clientFd){
-                 it = pollFds.erase(it);
-                 --it;
+                // it = pollFds.erase(it);
+				pollFds.erase(it);
+                //  --it;
             }
         }
     }
     if (response == "QUIT :leaving\r\n")
     {
+		// Remove filedescriptor if client send QUIT message
        for (std::vector<pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it){
             if (it->fd == clientFd){
-                 it = pollFds.erase(it);
-                 --it;
+                //  it = pollFds.erase(it);
+				pollFds.erase(it);
+                //  --it;
             }
         } 
     }
