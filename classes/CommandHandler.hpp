@@ -16,5 +16,6 @@ class CommandHandler{
         static bool parseMessage(std::string message, std::string &channelName, std::string &messageContent);
         static bool parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName, std::string &password);
         static bool doesChannelExist(std::vector<Channel> &channels, std::string channelName);
-};
+        static bool parseKickMessage(std::string message, std::string &channelName, std::string &nickName);
+};      
 

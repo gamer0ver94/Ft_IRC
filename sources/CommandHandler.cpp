@@ -145,6 +145,43 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             response = ":" + server.hostName + " NOTICE " + channelName + " :Message sended succefully!\r\n";
             break;
+        case 11 :
+            response = ":QUIT :leaving\r\n";
+            for (std::map<int, Client*>::iterator it = server.clients.begin(); it != server.clients.end(); ++it){
+                if (it->second->nickName == nickName){
+                   server.clients.erase(it);
+                }
+            }
+            break;
+        case 12 : // Command Kick
+            parseKickMessage(message, channelName ,nickName);
+            response = ":" + nickName + " PART " + channelName + "\r\n";
+            for (it = server.channels.begin();it != server.channels.end(); ++it){
+                if ((*it).channelName == channelName){
+                    (*it).invitedClients.erase(nickName);
+                    for(iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
+                        int sendStatus = send(iter->second.socketFd,response.c_str(),response.length(), 0);
+                        if (sendStatus <= 0){
+                            std::cout << Red << "Failed to send message" << Reset << std::endl;
+                        }
+                        else if (sendStatus > 0){
+                            std::cout << Cyan<< server.clients[clientFd]->nickName << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.nickName << Reset << std::endl;
+                        }
+                    }
+                    if ((*it).invitedClients.empty()) {
+                        it = server.channels.erase(it);
+                        --it;
+                    }
+                }
+            }
+            response = ":" + nickName + "!" + nickName + "@" + server.hostName + " Part " + channelName + "\r\n";
+            break;
+        case 13 : // Command Invite
+            break;
+        case 14 : // Command Topic
+            break;
+        case 15 : // Command Mode
+            break;
         default :
             response = "Unknown command.\r\n";
             break;
@@ -249,6 +286,21 @@ int CommandHandler::getMessageType(std::string message){
     else if (message.find("PRIVMSG ") != std::string::npos){
         return 10;
     }
+    else if (message.find("QUIT ") != std::string::npos){
+        return 11;
+    }
+    else if (message.find("KICK ") != std::string::npos){
+        return 12;
+    }
+    else if (message.find("INVITE ") != std::string::npos){
+        return 13;
+    }
+    else if (message.find("TOPIC ") != std::string::npos){
+        return 14;
+    }
+    else if (message.find("MODE ") != std::string::npos){
+        return 15;
+    }
     return -1;
 }
 
@@ -267,6 +319,23 @@ bool CommandHandler::doesChannelExist(std::vector<Channel> &channels, std::strin
     for (std::vector<Channel>::iterator it = channels.begin(); it != channels.end(); ++it) {
         if (it->channelName == channelName) {
             return true;
+        }
+    }
+    return false;
+}
+
+bool CommandHandler::parseKickMessage(std::string message, std::string &channelName, std::string &nickName){
+     // Split the message into words using whitespace as delimiter
+    std::istringstream iss(message);
+    std::string word;
+    std::vector<std::string> words;
+    while (iss >> word) {
+        words.push_back(word);
+    }
+    for (size_t i = 0; i < words.size(); i++){
+        if (words[i] == "KICK"){
+            channelName = words[i + 1];
+            nickName = words[i + 2];
         }
     }
     return false;

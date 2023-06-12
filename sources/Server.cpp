@@ -101,7 +101,7 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
             memset(buffer, 0, sizeof(buffer));
             // Receive Data from Client
             int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer) - 1, 0);
-            if (recvBytes <= 0) {
+            if (recvBytes < 0) {
                 throw std::runtime_error("Failed to receive data from client.");
             }
             else if (recvBytes == 0) {
@@ -134,6 +134,15 @@ void Server::handleClientMessage(std::string message, int& clientFd){
             }
         }
     }
+    if (response == "QUIT :leaving\r\n")
+    {
+       for (std::vector<pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it){
+            if (it->fd == clientFd){
+                 it = pollFds.erase(it);
+                 --it;
+            }
+        } 
+    }
     sendingStatus = send(clientFd, response.c_str(), response.length(), 0);
     if (sendingStatus == -1){
         std::cout << Red << "Error Sending response from the server" << Reset << std::endl;
@@ -147,7 +156,12 @@ void Server::printData(void){
     for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
         std::cout << "Channel: " << it->channelName << std::endl;
         for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){ 
-            std::cout << "Client: " << iter->second.nickName << std::endl;
+            if (it->opClientFd[0] == iter->second.socketFd){
+                std::cout << "Client op: " << iter->second.nickName << std::endl;
+            }
+            else{
+                std::cout << "Client: " << iter->second.nickName << std::endl;
+            }
         }
         std::cout << "_______________________________" << std::endl;
     }
