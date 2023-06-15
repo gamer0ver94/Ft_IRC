@@ -119,11 +119,12 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             response = ":" + nickName + "!" + nickName + "@" + server.hostName + " Part " + channelName + "\r\n";
             break;
-        case 10 :
+        case 10 : // Command PRIVM
             parseMessage(message, channelName, messageContent);
             for (it = server.channels.begin();it != server.channels.end(); ++it){
                 if ((*it).channelName == channelName){
-                    for(iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
+                    if (isInChannel(clientFd, (*it))){
+                        for(iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
                         if (iter->second.nickName == server.clients[clientFd]->nickName){
                             //skip
                         }
@@ -140,6 +141,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 						        std::cerr << "socket does not exit" << std::endl;
 	    				    }
                         }
+                    }
                     }
                 }
             }
@@ -341,8 +343,12 @@ bool CommandHandler::parseKickMessage(std::string message, std::string &channelN
     return false;
 }
 
-static bool CommandHandlerisInChannel(int clientFd, Channel channel){
-	for(std::map<std::string, Client>::iterator it = channel.invitedClients.begin(); it != channel.invitedClients.end();++iter){
-		if (it->second)
-	}
+bool CommandHandler::isInChannel(int clientFd, Channel &channel) {
+    for (std::map<std::string, Client>::iterator it = channel.invitedClients.begin(); it != channel.invitedClients.end(); ++it) {
+        if (it->second.socketFd == clientFd) {
+            return true;
+        }
+    }
+    return false;
 }
+
