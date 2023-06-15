@@ -18,5 +18,6 @@ class CommandHandler{
         static bool doesChannelExist(std::vector<Channel> &channels, std::string channelName);
         static bool parseKickMessage(std::string message, std::string &channelName, std::string &nickName);
 		static bool isInChannel(int clientFd, Channel &channel);
+		static bool isOperator(std::vector<int> operators, int clientFd);
 };      
 

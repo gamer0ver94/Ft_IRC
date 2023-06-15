@@ -20,6 +20,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
     std::string response2;
     std::vector<Channel>::iterator it;
     std::map<std::string, Client>::iterator iter;
+	std::vector<int> op;
     switch (messageType){
         case 0 :    //CommandCAP
              response = handleCapabilityNegotiation(message);
@@ -160,23 +161,31 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response = ":" + nickName + "!" + nickName + "@" + server.hostName + " Part " + channelName + "\r\n";
             for (it = server.channels.begin();it != server.channels.end(); ++it){
                 if ((*it).channelName == channelName){
-                    (*it).invitedClients.erase(nickName);
-                    for(iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
-                        int sendStatus = send(iter->second.socketFd,response.c_str(),response.length(), 0);
-                        if (sendStatus <= 0){
-                            std::cout << Red << "Failed to send message" << Reset << std::endl;
-                        }
-                        else if (sendStatus > 0){
-                            std::cout << Cyan<< server.clients[clientFd]->nickName << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.nickName << Reset << std::endl;
-                        }
-                    }
-                    if ((*it).invitedClients.empty()) {
-                        it = server.channels.erase(it);
-                        --it;
-                    }
+					//create function to verify if is op
+					if (isOperator((*it).opClientFd , clientFd)){
+						(*it).invitedClients.erase(nickName);
+                    	for(iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
+                    	    int sendStatus = send(iter->second.socketFd,response.c_str(),response.length(), 0);
+                    	    if (sendStatus <= 0){
+                    	        std::cout << Red << "Failed to send message" << Reset << std::endl;
+                    	    }
+                    	    else if (sendStatus > 0){
+								response = ":" + nickName + " PART " + channelName + "\r\n";
+                    	        std::cout << Cyan<< server.clients[clientFd]->nickName << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.nickName << Reset << std::endl;
+                    	    }
+                    	}
+                    	if ((*it).invitedClients.empty()) {
+                    	    it = server.channels.erase(it);
+                    	    --it;
+                    	}
+					}
+					else{
+						response = ":" + server.hostName + " NOTICE " + channelName + " :You have no right to kick somebody!\r\n";
+						//change to a NOTICE
+					}
                 }
             }
-            response = ":" + nickName + " PART " + channelName + "\r\n";
+            
             break;
         case 13 : // Command Invite
             break;
@@ -352,3 +361,11 @@ bool CommandHandler::isInChannel(int clientFd, Channel &channel) {
     return false;
 }
 
+bool CommandHandler::isOperator(std::vector<int> operators, int clientFd){
+	for (std::vector<int>::iterator it = operators.begin(); it != operators.end(); ++it){
+		if (*it == clientFd){
+			return true;
+		}
+	}
+	return false;
+}

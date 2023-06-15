@@ -75,7 +75,7 @@ void Server::listening() {
             throw std::runtime_error("Error in poll system call.");
         }
         // Check if there is a new client connection   
-        if (pollResult > 0){
+        if (pollResult >= 0){
             if (pollFds[0].revents & (POLLIN)) {
                 int clientSocket = accept(socketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
                 if (clientSocket == -1) {
