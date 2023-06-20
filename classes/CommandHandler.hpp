@@ -10,9 +10,9 @@
 #define DEUX(host, clientFD) (":" + host + " 221" + clientFD + " -I\r\n")
 #define PARTA(nick, host, channel) (":" + nick + "!" + nick + "@" + host + " Part " + channel + "\r\n")
 #define PRIVMSG(clientFD, user, channel, message) (":" + clientFD + "!~" + user + " PRIVMSG " + channel + " :" + message + "\r\n")
-#define NOTICE(host, channel) (":" + host + " NOTICE " + channel + " :Message sended succefully!\r\n")
-
-
+#define NOTICE(host, channel, message) (":" + host + " NOTICE " + channel + " :" + message + "\r\n")
+#define PART(nick, channel) (":" + nick + " PART " + channel + "\r\n")
+#define PARTNICK(nick, host, channel) (":" + nick + "!" + nick + "@" + host + " Part " + channel + "\r\n")
 class Server;
 
 class CommandHandler{

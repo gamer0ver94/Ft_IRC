@@ -143,7 +143,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     }
                 }
             }
-            response = NOTICE(server.hostName, channelName);
+            response = NOTICE(server.hostName, channelName, "Message sended succefully");
             break;
         case 11 :
             response = ":QUIT :leaving\r\n";
@@ -155,7 +155,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             break;
         case 12 : // Command Kick
             parseKickMessage(message, channelName ,nickName);
-            response = ":" + nickName + " PART " + channelName + "\r\n";
+            response = PART(nickName, channelName);
             for (it = server.channels.begin();it != server.channels.end(); ++it){
                 if ((*it).channelName == channelName){
                     (*it).invitedClients.erase(nickName);
@@ -174,7 +174,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     }
                 }
             }
-            response = ":" + nickName + "!" + nickName + "@" + server.hostName + " Part " + channelName + "\r\n";
+            response = PARTNICK(nickName, server.hostName, channelName);
             break;
         case 13 : // Command Invite
             break;
