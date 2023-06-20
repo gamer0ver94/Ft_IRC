@@ -2,7 +2,7 @@
 #include <iostream>
 #include "../classes/Server.hpp"
 #include "../classes/Client.hpp"
-
+#define NOTOPERATOR(SERVERNAME, CHANNELNAME) (":" + SERVERNAME + " 482 " + SERVERNAME + " " + CHANNELNAME + " :You're not a channel operator\r\n")
 class Server;
 
 class CommandHandler{
@@ -19,5 +19,12 @@ class CommandHandler{
         static bool parseKickMessage(std::string message, std::string &channelName, std::string &nickName);
 		static bool isInChannel(int clientFd, Channel &channel);
 		static bool isOperator(std::vector<int> operators, int clientFd);
+        static std::string extractMode(std::string &message, std::string &channelName);
+        static Channel& getChannelByName(std::vector<Channel> &channels, std::string channelName);
+        static Client& getClientByName(std::map<int, Client*> &clients, std::string clientName);
+        static std::string extractChannelPassword(std:: string &message);
+        static std::string extractInvitedClient(std:: string &message);
+        static std::string extractTopic(std::string message);
+        static void messageAllChannelClients(Channel channel, int client, std::string message);
 };      
-
+// get channel by name

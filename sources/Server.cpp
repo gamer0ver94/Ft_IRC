@@ -158,6 +158,10 @@ void Server::handleClientMessage(std::string message, int& clientFd){
 void Server::printData(void){
     for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
         std::cout << "Channel: " << it->channelName << std::endl;
+        std::cout << "i Mode = " << it->iMode << std::endl;
+        std::cout << "t Mode = " << it->tMode << std::endl;
+        std::cout << "k Mode = " << it->kMode << std::endl;
+        std::cout << "o Mode = " << it->oMode << std::endl;
         for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){ 
             if (it->opClientFd[0] == iter->second.socketFd){
                 std::cout << "Client op: " << iter->second.nickName << std::endl;
@@ -166,6 +170,10 @@ void Server::printData(void){
                 std::cout << "Client: " << iter->second.nickName << std::endl;
             }
         }
+        if (!it->password.empty()){
+             std::cout << "Channel Password: " << it->password << std::endl;
+        }
+        std::cout << "Topic " << it->topic << std::endl;
         std::cout << "_______________________________" << std::endl;
     }
 }
