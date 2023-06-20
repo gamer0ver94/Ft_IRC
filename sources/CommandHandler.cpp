@@ -39,17 +39,17 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             client = new Client(clientFd, nickName, userName, hostName, serverHostName, realName);
             server.clients.insert(std::pair<int, Client*>(clientFd, client));
-            response = ":" + server.hostName + " 001 " + server.clients[clientFd]->nickName + " :" +  readFile("wel.txt")  + " " + client->nickName + " " + readFile("come.txt") + "\r\n";
+            response = READFILE(server.hostName, server.clients[clientFd]->nickName, client->nickName);
             break;
         case 2 :    //CommandNICK
             while (iss >> word) {
                 words.push_back(word);
             }
             server.clients[clientFd]->nickName = words[1];
-            response = ":" + server.hostName + " 001 " + server.clients[clientFd]->nickName + " :Name changed to " + server.clients[clientFd]->nickName + "\r\n";
+            response = NAMECHANGE(server.hostName, server.clients[clientFd]->nickName);
             break;
         case 3 :
-           response = ":" + server.hostName + " 311 " + server.clients[clientFd]->nickName + " localhost " + server.clients[clientFd]->nickName + " *\r\n";
+           response = LOCALHOST(server.hostName, server.clients[clientFd]->nickName);
            break;
         case 4 :
             response = ":localhost CAP * ACK :END\r\n";
@@ -59,7 +59,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             server.printData();
             break;
         case 6 :
-            response = ":" + server.hostName + " 221" + server.clients[clientFd]->nickName + " -I\r\n";
+            response = DEUX(server.hostName, server.clients[clientFd]->nickName);
             break;
         case 7 :
             response = handleCapabilityNegotiation(message);
@@ -117,7 +117,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     }
                 }
             }
-            response = ":" + nickName + "!" + nickName + "@" + server.hostName + " Part " + channelName + "\r\n";
+            response = PARTA(nickName, server.hostName, channelName);
             break;
         case 10 :
             parseMessage(message, channelName, messageContent);
@@ -128,7 +128,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                             //skip
                         }
                         else{
-	    				    response = ":" + server.clients[clientFd]->nickName + "!~" + server.clients[clientFd]->userName + " PRIVMSG " + channelName + " :" + messageContent + "\r\n";
+	    				    response = PRIVMSG(server.clients[clientFd]->nickName, server.clients[clientFd]->userName, channelName, messageContent);
                             int sendStatus = send(iter->second.socketFd,response.c_str(),response.length(), 0);
                             if (sendStatus <= 0){
                                 std::cout << Red << "Failed to send message" << Reset << std::endl;
@@ -143,7 +143,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     }
                 }
             }
-            response = ":" + server.hostName + " NOTICE " + channelName + " :Message sended succefully!\r\n";
+            response = NOTICE(server.hostName, channelName);
             break;
         case 11 :
             response = ":QUIT :leaving\r\n";

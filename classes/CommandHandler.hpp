@@ -3,6 +3,16 @@
 #include "../classes/Server.hpp"
 #include "../classes/Client.hpp"
 
+
+#define READFILE(host, clientFD, clientNick) (":" + host + " 001 " + clientFD + " :" +  readFile("wel.txt")  + " " + clientNick + " " + readFile("come.txt") + "\r\n")
+#define NAMECHANGE(host, clientFD) (":" + host + " 001 " + clientFD + " :Name changed to " + clientFD + "\r\n")
+#define LOCALHOST(host, clientFD) (":" + host + " 311 " + clientFD + " localhost " + clientFD + " *\r\n")
+#define DEUX(host, clientFD) (":" + host + " 221" + clientFD + " -I\r\n")
+#define PARTA(nick, host, channel) (":" + nick + "!" + nick + "@" + host + " Part " + channel + "\r\n")
+#define PRIVMSG(clientFD, user, channel, message) (":" + clientFD + "!~" + user + " PRIVMSG " + channel + " :" + message + "\r\n")
+#define NOTICE(host, channel) (":" + host + " NOTICE " + channel + " :Message sended succefully!\r\n")
+
+
 class Server;
 
 class CommandHandler{
