@@ -46,22 +46,31 @@ class Server{
 		~Server();
 		// Methodes
 		void run();
+		void printData(void);
+		//getters
+		std::map<int, Client*> &getClients();
+		std::vector<pollfd> &getPollFds();
+		unsigned int getPort();
+		std::string getPassword();
+		int getSocketFd();
+		std::string getHostName();
+		std::vector<Channel> &getChannels();
+	private :
+		// Properties
+		std::map<int, Client*> _clients;
+		std::vector<Channel> _channels;
+		std::vector<pollfd> _pollFds;
+		struct sockaddr_in socketAddr;
 		unsigned int port;
 		std::string password;
 		int socketFd;
 		std::string hostName;
-		std::vector<pollfd> pollFds;
-		std::map<int, Client*> clients;
-		std::vector<Channel> channels;
-		void printData(void);
-	private :
-		// Properties
-		struct sockaddr_in socketAddr;
 		// Methodes
 		void createSocket();
 		void bindSocket();
 		void listening();
 		std::string readFile(const std::string& filePath);
-		void handleCommunication(std::vector<pollfd>& pollFds);
+		//void handleCommunication(std::vector<pollfd>& pollFds);
+		void handleCommunication();
 		void handleClientMessage(std::string message, int& clientFd);
 };

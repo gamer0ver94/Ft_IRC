@@ -57,8 +57,10 @@ void Server::bindSocket() {
     }
 }
 
+
 void Server::listening() {
     struct sockaddr_in clientAddr;
+    //std::vector<pollfd> pollFds = getPollfds(); getter pollFds
     socklen_t clientAddrLen = sizeof(clientAddr);
     listen(socketFd, 5);
     std::cout << Green << "Listening Clients Connections ..." << Reset << std::endl;
@@ -67,16 +69,16 @@ void Server::listening() {
     serverPollFd.fd = socketFd;
     serverPollFd.events = POLLIN;
     serverPollFd.revents = 0;
-    pollFds.push_back(serverPollFd);
+    getPollFds().push_back(serverPollFd);
     while (true) {
         // Wait for activity on any of the monitored file descriptors
-        int pollResult = poll(pollFds.data(), pollFds.size(), -1);
+        int pollResult = poll(getPollFds().data(), getPollFds().size(), -1);
         if (pollResult == -1) {
             throw std::runtime_error("Error in poll system call.");
         }
         // Check if there is a new client connection   
-        if (pollResult >= 0){
-            if (pollFds[0].revents & (POLLIN)) {
+        if (pollResult > 0){
+            if (getPollFds()[0].revents & (POLLIN)) {
                 int clientSocket = accept(socketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
                 if (clientSocket == -1) {
                     throw std::runtime_error("Failed to accept a client connection.");
@@ -86,51 +88,56 @@ void Server::listening() {
                 clientPollFd.fd = clientSocket;
                 clientPollFd.events = POLLIN;
                 clientPollFd.revents = 0;
-                pollFds.push_back(clientPollFd);
+                getPollFds().push_back(clientPollFd);
             }
         }
-        handleCommunication(pollFds);
+        handleCommunication(); //getter
     }
 }
 
-void Server::handleCommunication(std::vector<pollfd>& pollFds) {
+void Server::handleCommunication() {
     // Iterate through all the file descriptors in the vector
-    for (int i = pollFds.size() - 1; i >= 1; --i) {
-        if (pollFds[i].revents & POLLIN) {
+    //std::vector<pollfd> pollFds = getPollfds(); //getter pollFds
+    for (int i = getPollFds().size() - 1; i >= 1; --i) {
+        if (getPollFds()[i].revents & POLLIN) {
             char buffer[1024];
             memset(buffer, 0, sizeof(buffer));
             // Receive Data from Client
-            int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer) - 1, 0);
+            int recvBytes = recv(getPollFds()[i].fd, buffer, sizeof(buffer) - 1, 0);
             if (recvBytes < 0) {
                 throw std::runtime_error("Failed to receive data from client.");
             }
             else if (recvBytes == 0) {
                 // Client closed the connection
-                close(pollFds[i].fd);
-                pollFds.erase(pollFds.begin() + i);
+                close(getPollFds()[i].fd);
+                getPollFds().erase(getPollFds().begin() + i); 
                 // --i;
                 continue;
             }
             else {
                 buffer[recvBytes] = '\0';
                 std::string message(buffer);
-                handleClientMessage(message, pollFds[i].fd);
+                handleClientMessage(message, getPollFds()[i].fd);
             }
         }
     }
 }
 
+
 void Server::handleClientMessage(std::string message, int& clientFd){
     int sendingStatus;
+    //std::vector<pollfd> pollFds = getPollfds(); getter pollFds
     std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
     std::string response;
-    CommandHandler::handleCommand(*this, clientFd, message, response);
+    CommandHandler pp;
+    pp.handleCommand(*this, clientFd, message, response);
+    //CommandHandler::handleCommand(*this, clientFd, message, response);
     // If there is a connection refuse then delete the fd of the client
     if (response == "ERROR :Connection refused: NickName already taken"){
-        for (std::vector<pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it){
+        for (std::vector<pollfd>::iterator it = getPollFds().begin(); it != getPollFds().end(); ++it){
             if (it->fd == clientFd){
                 // it = pollFds.erase(it);
-				pollFds.erase(it);
+				getPollFds().erase(it);
                 //  --it;
             }
         }
@@ -138,10 +145,10 @@ void Server::handleClientMessage(std::string message, int& clientFd){
     if (response == "QUIT :leaving\r\n")
     {
 		// Remove filedescriptor if client send QUIT message
-       for (std::vector<pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it){
+       for (std::vector<pollfd>::iterator it = getPollFds().begin(); it != getPollFds().end(); ++it){
             if (it->fd == clientFd){
                 //  it = pollFds.erase(it);
-				pollFds.erase(it);
+				getPollFds().erase(it);
                 //  --it;
             }
         } 
@@ -156,18 +163,18 @@ void Server::handleClientMessage(std::string message, int& clientFd){
 }
 
 void Server::printData(void){
-    for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
-        std::cout << "Channel: " << it->channelName << std::endl;
+    for (std::vector<Channel>::iterator it = getChannels().begin();it != getChannels().end(); ++it){
+        std::cout << "Channel: " << it->getChannelName() << std::endl;
         std::cout << "i Mode = " << it->iMode << std::endl;
         std::cout << "t Mode = " << it->tMode << std::endl;
         std::cout << "k Mode = " << it->kMode << std::endl;
         std::cout << "o Mode = " << it->oMode << std::endl;
-        for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){ 
-            if (it->opClientFd[0] == iter->second.socketFd){
-                std::cout << "Client op: " << iter->second.nickName << std::endl;
+        for(std::map<std::string, Client>::iterator iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){ 
+            if (it->getOpClientFd()[0] == iter->second.getSocketFd()){
+                std::cout << "Client op: " << iter->second.getNickName() << std::endl;
             }
             else{
-                std::cout << "Client: " << iter->second.nickName << std::endl;
+                std::cout << "Client: " << iter->second.getNickName() << std::endl;
             }
         }
         if (!it->password.empty()){
@@ -176,4 +183,39 @@ void Server::printData(void){
         std::cout << "Topic " << it->topic << std::endl;
         std::cout << "_______________________________" << std::endl;
     }
+}
+
+std::vector<pollfd> &Server::getPollFds()
+{
+    return (this->_pollFds);
+}
+
+unsigned int Server::getPort()
+{
+    return (this->port);
+}
+
+std::string Server::getPassword()
+{
+    return (this->password);
+}
+
+int Server::getSocketFd()
+{
+    return (this->socketFd);
+}
+
+std::string Server::getHostName()
+{
+    return (this->hostName);
+}
+
+std::map<int, Client*> &Server::getClients()
+{
+    return (this->_clients);
+}
+
+std::vector<Channel> &Server::getChannels()
+{
+    return (this->_channels);
 }

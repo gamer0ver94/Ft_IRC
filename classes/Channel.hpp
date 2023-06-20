@@ -6,17 +6,21 @@
 class Client;
 class Channel{
 	public :
-		std::string channelName;
-		std::map<std::string, Client> invitedClients;
 		Channel(std::string name, Client op);
 		~Channel();
-		std::vector<int>opClientFd;
-		std::vector<int>invitedClientsToChannel;
+		//getters
+		std::string getChannelName();
+		std::vector<int> getOpClientFd();
+		std::map<std::string, Client> &getInvitedClients();
 		bool iMode;
 		bool tMode;
 		bool kMode;
 		bool oMode;
 		std::string password;
 		std::string topic;
+		std::vector<int>invitedClientsToChannel;
 	private :
+		std::string _channelName;
+		std::vector<int>_opClientFd;
+		std::map<std::string, Client> _invitedClients;
 };
