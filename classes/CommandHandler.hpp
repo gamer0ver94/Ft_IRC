@@ -2,6 +2,7 @@
 #include <iostream>
 #include "../classes/Server.hpp"
 #include "../classes/Client.hpp"
+#define CANTJOIN(servername,client,channelname) (":" + servername + " 437 " + client)
 #define NOTOPERATOR(SERVERNAME, CHANNELNAME) (":" + SERVERNAME + " 482 " + SERVERNAME + " " + CHANNELNAME + " :You're not a channel operator\r\n")
 class Server;
 
