@@ -68,7 +68,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     response = ":" + server.getHostName() + " 482 " + server.getClients()[clientFd]->getNickName() + " " + channelName + " :You're not a channel operator\r\n";
                     break;
                 }
-                std::cout << "la" << std::endl;
                 if (mode == "+i"){
                 getChannelByName(server.getChannels(), channelName).iMode = true;
                 }
@@ -99,7 +98,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             catch(std::exception &e){
                 std::cout << e.what() << std::endl;
-                response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
+                response = ":" + server.getHostName() + " 502 " + server.getClients()[clientFd]->getNickName() + " :You are now online\r\n";
             }
             break;
         case 7 :
@@ -146,6 +145,15 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response = ":" + nickName + " PART " + channelName + "\r\n";
             for (it = server.getChannels().begin();it != server.getChannels().end(); ++it){
                 if ((*it).getChannelName() == channelName){
+                    // delete the fd from the op
+                    if (isOperator((*it).getOpClientFd(), clientFd)){
+						for (std::vector<int>::iterator iter = it->getOpClientFd().begin(); iter != it->getOpClientFd().end(); ++iter) {
+                            if (*iter == clientFd) {
+                              it->getOpClientFd().erase(iter);
+                              break;  // Break out of the loop after erasing the element
+                            }
+                        }
+					}
                     (*it).getInvitedClients().erase(nickName);
                     for(iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){
                         int sendStatus = send(iter->second.getSocketFd(),response.c_str(),response.length(), 0);
@@ -160,8 +168,12 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                         it = server.getChannels().erase(it);
                         --it;
                     }
+					break;
                 }
             }
+			if (getChannelByName(server.getChannels(), channelName).getOpClientFd().empty()){
+				getChannelByName(server.getChannels(), channelName).getOpClientFd().push_back(getChannelByName(server.getChannels(), channelName).getInvitedClients().begin()->second.getSocketFd());
+			}
             response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
             break;
         case 10 : // Command PRIVM
@@ -200,7 +212,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 }
             }
             break;
-        case 12 : // Command Kick
+        case 12 : // Command Kick / ps debugg if he tries to kick himself
             parseKickMessage(message, channelName ,nickName);
             response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
             for (it = server.getChannels().begin();it != server.getChannels().end(); ++it){
