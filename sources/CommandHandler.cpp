@@ -145,8 +145,14 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response = ":" + nickName + " PART " + channelName + "\r\n";
             for (it = server.channels.begin();it != server.channels.end(); ++it){
                 if ((*it).channelName == channelName){
+                    // delete the fd from the op
                     if (isOperator((*it).opClientFd, clientFd)){
-						it->opClientFd.erase(std::remove(it->opClientFd.begin(), it->opClientFd.end(), clientFd), it->opClientFd.end());
+						for (std::vector<int>::iterator iter = it->opClientFd.begin(); iter != it->opClientFd.end(); ++iter) {
+                            if (*iter == clientFd) {
+                              it->opClientFd.erase(iter);
+                              break;  // Break out of the loop after erasing the element
+                            }
+                        }
 					}
                     (*it).invitedClients.erase(nickName);
                     for(iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){
@@ -206,7 +212,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 }
             }
             break;
-        case 12 : // Command Kick
+        case 12 : // Command Kick / ps debugg if he tries to kick himself
             parseKickMessage(message, channelName ,nickName);
 			std::cout << nickName << std::endl;
             response = ":" + nickName + "!" + nickName + "@" + server.hostName + " Part " + channelName + "\r\n";
