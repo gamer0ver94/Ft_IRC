@@ -29,7 +29,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             break;
         case 1 :    //CommandNICK/USER
             parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password);
-            std::cout << server.password << "  " << password << std::endl;
             if (password.empty() || server.password != password){
                 response = "ERROR :Connection refused: Password Does Not Match\r\n";
                 return;
@@ -49,15 +48,16 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 words.push_back(word);
             }
             server.clients[clientFd]->nickName = words[1];
+            server.clients[clientFd]->userName = words[1];
             response = ":" + server.hostName + " 001 " + server.clients[clientFd]->nickName + " :Name changed to " + server.clients[clientFd]->nickName + "\r\n";
             break;
-        case 3 :
+        case 3 : // Command WHOIS
            response = ":" + server.hostName + " 311 " + server.clients[clientFd]->nickName + " localhost " + server.clients[clientFd]->nickName + " *\r\n";
            break;
-        case 4 :
+        case 4 : // Command ENDCAP
             response = ":localhost CAP * ACK :END\r\n";
             break;
-        case 5 :
+        case 5 : // Command PING
             response = "PONG " + server.hostName + "\r\n";
             server.printData();
             break;
@@ -81,23 +81,23 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     getChannelByName(server.channels, channelName).tMode = false;
                 }
                 else if (mode == "+k"){
-                    getChannelByName(server.channels, channelName).kMode = true;
                     getChannelByName(server.channels, channelName).password = extractChannelPassword(message);
                 }
                 else if (mode == "-k"){
-                    getChannelByName(server.channels, channelName).kMode = false;
                     getChannelByName(server.channels, channelName).password.clear();
                 }
                 else if (mode == "+o"){
-                    getChannelByName(server.channels, channelName).oMode = true;
+                    extractNewOp(message, nickName, channelName);
+                    getChannelByName(server.channels, channelName).opClientFd.push_back(getClientByName(server.clients, nickName).socketFd);
                 }
                 else if (mode == "-o"){
-                    getChannelByName(server.channels, channelName).oMode = false;
+                    extractNewOp(message, nickName, channelName);
+                    std::cout << channelName << std::endl;
+                    removeElementByFd(getChannelByName(server.channels, channelName).opClientFd, getClientByName(server.clients, nickName).socketFd);
                 }
                 response = ":" + server.hostName + " MODE " + channelName + " " + mode + "\r\n";
             }
-            catch(std::exception &e){
-                std::cout << e.what() << std::endl;
+            catch(...){
                 response = ":" + server.hostName + " 502 " + server.clients[clientFd]->nickName + " :You are now online\r\n";
             }
             break;
@@ -107,7 +107,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
         case 8 : // Command Join
             parseChannelName(message, channelName);
             if (!doesChannelExist(server.channels, channelName)){
-                 std::cout << Cyan << "###" << server.clients[clientFd]->nickName << " created :" << channelName << "###" << Reset << std::endl;
+                std::cout << Cyan << "###" << server.clients[clientFd]->nickName << " created :" << channelName << "###" << Reset << std::endl;
                 server.channels.push_back(Channel(channelName, *server.clients[clientFd]));
                 // Search the channel end atribute the op to the client who created the channel
                 for(std::vector<Channel>::iterator it = server.channels.begin(); it != server.channels.end(); ++it){
@@ -171,9 +171,14 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 					break;
                 }
             }
-			if (getChannelByName(server.channels, channelName).opClientFd.empty()){
+            try{
+                if (getChannelByName(server.channels, channelName).opClientFd.empty()){
 				getChannelByName(server.channels, channelName).opClientFd.push_back(getChannelByName(server.channels, channelName).invitedClients.begin()->second.socketFd);
-			}
+			    }
+            }
+            catch(std::exception &e){
+                std::cout << e.what() << std::endl;
+            }
             response = ":" + nickName + "!" + nickName + "@" + server.hostName + " Part " + channelName + "\r\n";
             break;
         case 10 : // Command PRIVM
@@ -545,6 +550,33 @@ void CommandHandler::messageAllChannelClients(Channel channel, int client, std::
     for (std::map<std::string, Client>::iterator it = channel.invitedClients.begin(); it != channel.invitedClients.end(); ++it){
         if (it->second.socketFd != client){
             send(it->second.socketFd, message.c_str(), message.length(), 0);
+        }
+    }
+}
+
+void CommandHandler::extractNewOp(std::string message, std::string &nickName, std::string &channelName){
+    // Split the message into words using whitespace as delimiter
+    std::istringstream iss(message);
+    std::string word;
+    std::vector<std::string> words;
+    std::string topic;
+    while (iss >> word) {
+        words.push_back(word);
+    }
+    for (size_t i = 0; i < words.size(); i++){
+        if(words[i] == "MODE"){
+            channelName = words[i + 1];
+            nickName = words[i + 3];
+            break;
+        }
+    }
+}
+
+void CommandHandler::removeElementByFd(std::vector<int>& vec, int id) {
+    for (std::vector<int>::iterator it = vec.begin(); it != vec.end(); ++it) {
+        if (*it == id) {
+            vec.erase(it);
+            return;
         }
     }
 }

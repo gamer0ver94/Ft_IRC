@@ -69,3 +69,6 @@ part needs to remove clinet if it is the last client then remove the channel fro
 when create a channel need to change the op status from the client to true when he get out of the channel if there is still clients in there then pass the op to true and search for the first client on to give him the opstatus true
 
 /operator as not right to be kicked from his own channel
+
+
+//problem when last client part from channel

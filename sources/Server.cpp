@@ -1,7 +1,8 @@
 #include "../classes/Server.hpp"
-
+#include <csignal>
+extern bool test;
 Server::Server(unsigned int port, std::string password) :
-    port(port), password(password), socketFd(0), hostName("localhost") {
+    port(port), password(password), socketFd(0), hostName("IRCSERVER") {
     std::cout << "Server Constructor" << std::endl;
 }
 
@@ -41,7 +42,6 @@ void Server::bindSocket() {
         socketAddr.sin_port = htons(port);
         socketAddr.sin_addr.s_addr = htons(INADDR_ANY);
         //Give server new name baseon ip
-        hostName = inet_ntoa(socketAddr.sin_addr);
         // Bind the Socket
         int bindStatus = bind(socketFd, (struct sockaddr*)&socketAddr, sizeof(socketAddr));
         if (bindStatus == -1) {
@@ -69,6 +69,9 @@ void Server::listening() {
     serverPollFd.revents = 0;
     pollFds.push_back(serverPollFd);
     while (true) {
+        if (test){
+            printData();
+        }
         // Wait for activity on any of the monitored file descriptors
         int pollResult = poll(pollFds.data(), pollFds.size(), -1);
         if (pollResult == -1) {
@@ -122,6 +125,7 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
 
 void Server::handleClientMessage(std::string message, int& clientFd){
     int sendingStatus;
+    std::cout << Magenta << "______________________________________________________________" << Reset << std::endl;
     std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
     std::string response;
     CommandHandler::handleCommand(*this, clientFd, message, response);
@@ -151,11 +155,11 @@ void Server::handleClientMessage(std::string message, int& clientFd){
         std::cout << Red << "Error Sending response from the server" << Reset << std::endl;
     }
     else{
-        std::cout << Blue << "=> Server Sended Response with: " << Reset << response << std::endl;
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << response;
     }
 }
 
-void Server::printData(void){
+void Server::printData(){
     for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
         std::cout << "Channel: " << it->channelName << std::endl;
         std::cout << "i Mode = " << it->iMode << std::endl;
@@ -163,6 +167,7 @@ void Server::printData(void){
         std::cout << "k Mode = " << it->kMode << std::endl;
         std::cout << "o Mode = " << it->oMode << std::endl;
         for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){ 
+           //isOperator(it->opClientFd, iter->second.socketFd);
             if (it->opClientFd[0] == iter->second.socketFd){
                 std::cout << "Client op: " << iter->second.nickName << std::endl;
             }

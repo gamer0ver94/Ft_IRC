@@ -27,5 +27,7 @@ class CommandHandler{
         static std::string extractInvitedClient(std:: string &message);
         static std::string extractTopic(std::string message);
         static void messageAllChannelClients(Channel channel, int client, std::string message);
+        static void extractNewOp(std::string message, std::string &nickName, std::string &channelName);
+        static void removeElementByFd(std::vector<int>& vec, int id);
 };      
 // get channel by name

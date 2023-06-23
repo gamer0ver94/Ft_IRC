@@ -1,6 +1,19 @@
 #include "../classes/Server.hpp"
 
+bool test = false;
+
+void signalHandler(int signal) {
+    if (signal == SIGINT || signal == SIGQUIT) {
+        test = true;
+	}
+	test = false;
+	exit(-1);
+	std::cout << "signal detected" << std::endl;
+}
+
 int main(int argc, char**argv){
+	signal(SIGINT, signalHandler);
+	signal(SIGQUIT, signalHandler);
 	if (argc != 3){
 		std::cerr << "Not enough arguments to run the program." << std::endl;
 		return -1;

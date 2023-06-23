@@ -3,6 +3,7 @@
 #include "Client.hpp"
 #include <map>
 #include <vector>
+#include "../includes/colors.hpp"
 
 class Client;
 class Channel{

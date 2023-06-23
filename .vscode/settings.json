@@ -72,6 +72,7 @@
 		"cinttypes": "cpp",
 		"__tree": "cpp",
 		"map": "cpp",
-		"fstream": "cpp"
+		"fstream": "cpp",
+		"csignal": "cpp"
 	}
 }

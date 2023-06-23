@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <unistd.h>
+#include "../includes/colors.hpp"
 class Client{
 	public :
 		Client(int socket, std::string nickName, std::string userName, std::string hostName, std::string serverHostName, std::string realName);

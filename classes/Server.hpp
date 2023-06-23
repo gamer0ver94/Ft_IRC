@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <csignal>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <sys/poll.h>
@@ -17,26 +18,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-// Text Colors
-#define Black "\033[30m"
-#define Red "\033[31m"
-#define Green "\033[32m"
-#define Yellow "\033[33m"
-#define Blue "\033[34m"
-#define Magenta "\033[35m"
-#define Cyan "\033[36m"
-#define White "\033[37m"
-// Background Colors
-#define BgBlack "\033[40m"
-#define BgRed "\033[41m"
-#define BgGreen "\033[42m"
-#define BgYellow "\033[43m"
-#define BgBlue "\033[44m"
-#define BgMagenta "\033[45m"
-#define BgCyan "\033[46m"
-#define BgWhite "\033[47m"
-// Reset color
-#define Reset "\033[0m"
+#include "../includes/colors.hpp"
 #include "../classes/CommandHandler.hpp"
 
 class Server{
@@ -46,6 +28,14 @@ class Server{
 		~Server();
 		// Methodes
 		void run();
+		//getters
+		// std::map<int, Client*> &getClients();
+		// std::vector<pollfd> &getPollFds();
+		// unsigned int getPort();
+		// std::string getPassword();
+		// int getSocketFd();
+		// std::string getHostName();
+		// std::vector<Channel> &getChannels();
 		unsigned int port;
 		std::string password;
 		int socketFd;
@@ -53,7 +43,7 @@ class Server{
 		std::vector<pollfd> pollFds;
 		std::map<int, Client*> clients;
 		std::vector<Channel> channels;
-		void printData(void);
+		void printData();
 	private :
 		// Properties
 		struct sockaddr_in socketAddr;
