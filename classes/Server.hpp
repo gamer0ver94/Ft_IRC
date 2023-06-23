@@ -29,13 +29,17 @@ class Server{
 		// Methodes
 		void run();
 		//getters
-		// std::map<int, Client*> &getClients();
-		// std::vector<pollfd> &getPollFds();
-		// unsigned int getPort();
-		// std::string getPassword();
-		// int getSocketFd();
-		// std::string getHostName();
-		// std::vector<Channel> &getChannels();
+		std::map<int, Client*> &getClients();
+		std::vector<pollfd> &getPollFds();
+		unsigned int getPort();
+		std::string getPassword();
+		int getSocketFd();
+		std::string getHostName();
+		std::vector<Channel> &getChannels();
+
+		void printData();
+	private :
+		// Properties
 		unsigned int port;
 		std::string password;
 		int socketFd;
@@ -43,9 +47,6 @@ class Server{
 		std::vector<pollfd> pollFds;
 		std::map<int, Client*> clients;
 		std::vector<Channel> channels;
-		void printData();
-	private :
-		// Properties
 		struct sockaddr_in socketAddr;
 		// Methodes
 		void createSocket();

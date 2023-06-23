@@ -72,3 +72,4 @@ when create a channel need to change the op status from the client to true when 
 
 
 //problem when last client part from channel
+//WHOIS IS DISPLAYING BAD NAME AFTER NICK <something>

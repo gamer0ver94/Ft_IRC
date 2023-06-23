@@ -161,24 +161,61 @@ void Server::handleClientMessage(std::string message, int& clientFd){
 
 void Server::printData(){
     for (std::vector<Channel>::iterator it = channels.begin();it != channels.end(); ++it){
-        std::cout << "Channel: " << it->channelName << std::endl;
-        std::cout << "i Mode = " << it->iMode << std::endl;
-        std::cout << "t Mode = " << it->tMode << std::endl;
-        std::cout << "k Mode = " << it->kMode << std::endl;
-        std::cout << "o Mode = " << it->oMode << std::endl;
-        for(std::map<std::string, Client>::iterator iter = (*it).invitedClients.begin(); iter != (*it).invitedClients.end();++iter){ 
+        std::cout << "Channel: " << it->getChannelName() << std::endl;
+        std::cout << "i Mode = " << it->getIMode() << std::endl;
+        std::cout << "t Mode = " << it->getTMode() << std::endl;
+        std::cout << "k Mode = " << it->getKMode() << std::endl;
+        std::cout << "o Mode = " << it->getOMode() << std::endl;
+        for(std::map<std::string, Client>::iterator iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){ 
            //isOperator(it->opClientFd, iter->second.socketFd);
-            if (it->opClientFd[0] == iter->second.socketFd){
-                std::cout << "Client op: " << iter->second.nickName << std::endl;
+            if (it->getOpClientFd()[0] == iter->second.getSocketFd()){
+                std::cout << "Client op: " << iter->second.getNickName() << std::endl;
             }
             else{
-                std::cout << "Client: " << iter->second.nickName << std::endl;
+                std::cout << "Client: " << iter->second.getNickName() << std::endl;
             }
         }
-        if (!it->password.empty()){
-             std::cout << "Channel Password: " << it->password << std::endl;
+        if (!it->getPassword().empty()){
+             std::cout << "Channel Password: " << it->getPassword() << std::endl;
         }
-        std::cout << "Topic " << it->topic << std::endl;
+        std::cout << "Topic " << it->getTopic() << std::endl;
         std::cout << "_______________________________" << std::endl;
     }
+}
+
+//getters
+
+std::vector<pollfd> &Server::getPollFds()
+{
+    return (this->pollFds);
+}
+
+unsigned int Server::getPort()
+{
+    return (this->port);
+}
+
+std::string Server::getPassword()
+{
+    return (this->password);
+}
+
+int Server::getSocketFd()
+{
+    return (this->socketFd);
+}
+
+std::string Server::getHostName()
+{
+    return (this->hostName);
+}
+
+std::map<int, Client*> &Server::getClients()
+{
+    return (this->clients);
+}
+
+std::vector<Channel> &Server::getChannels()
+{
+    return (this->channels);
 }
