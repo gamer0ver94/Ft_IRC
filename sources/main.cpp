@@ -1,13 +1,9 @@
 #include "../classes/Server.hpp"
 
-bool test = false;
-
 void signalHandler(int signal) {
     if (signal == SIGINT || signal == SIGQUIT) {
-        test = true;
+		exit(-1);
 	}
-	test = false;
-	exit(-1);
 	std::cout << "signal detected" << std::endl;
 }
 

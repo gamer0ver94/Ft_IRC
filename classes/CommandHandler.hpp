@@ -2,13 +2,25 @@
 #include <iostream>
 #include "../classes/Server.hpp"
 #include "../classes/Client.hpp"
+#define NOTICE_JOIN(target, client, message) ("NOTICE " + target + " :" + client + message)
+#define ERROR_BADPASSWORD() ("ERROR :Connection refused: Password Does Not Match\r\n")
+#define ERROR_NICKTAKEN() ("ERROR :Connection refused: NickName already taken\r\n");
+#define WHOIS_MSG(hostName, nickName) (":" + hostName + " 311 " + nickName + " " + hostName + " " + nickName + " *\r\n")
+#define CAP_END() (":localhost CAP * ACK :END\r\n")
+#define NICKCHANGE_MSG(serverHostName, nickName) (":" + serverHostName + " 001 " + nickName + " :Name changed to " + nickName + "\r\n")
+#define WELCOME_SERVER(hostName, nickName, message, message2) (":" + hostName + " 001 " + nickName + " :" + message  + " " + nickName + " " + message2 + "\r\n")
 #define CANTJOIN(servername,client,channelname) (":" + servername + " 437 " + client)
+#define PONG_MSG(serverHostName) ("PONG " + serverHostName + "\r\n")
+#define MODE_MEG(serverHostName, channelName, mode) (":" + serverHostName + " MODE " + channelName + " " + mode + "\r\n")
+#define AS(nick, name, symbol, chan, prefix) (std::string("353 ") + nick + " " + symbol + " " + chan + " " + prefix + name + "\r\n")
+
 #define NOTOPERATOR(SERVERNAME, CHANNELNAME) (":" + SERVERNAME + " 482 " + SERVERNAME + " " + CHANNELNAME + " :You're not a channel operator\r\n")
 class Server;
 
 class CommandHandler{
     public:
         static void handleCommand(Server& server, int &clientFd, std::string message, std::string &response);
+		static bool isInChannel(int clientFd, Channel &channel);
     private:
         static int getMessageType(std::string message);
         static std::string handleCapabilityNegotiation(const std::string& message);
@@ -18,7 +30,6 @@ class CommandHandler{
         static bool parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName, std::string &password);
         static bool doesChannelExist(std::vector<Channel> &channels, std::string channelName);
         static bool parseKickMessage(std::string message, std::string &channelName, std::string &nickName);
-		static bool isInChannel(int clientFd, Channel &channel);
 		static bool isOperator(std::vector<int> operators, int clientFd);
         static std::string extractMode(std::string &message, std::string &channelName);
         static Channel& getChannelByName(std::vector<Channel> &channels, std::string channelName);
@@ -29,5 +40,10 @@ class CommandHandler{
         static void messageAllChannelClients(Channel channel, int client, std::string message);
         static void extractNewOp(std::string message, std::string &nickName, std::string &channelName);
         static void removeElementByFd(std::vector<int>& vec, int id);
+        static void sendExtraMessage(int fd, std::string message);
+        static void deleteClient(std::map<int, Client*>& clients, int clientFd);
+       static void deleteClientFromAllChannels(std::vector<Channel>& channels, int clientFd, std::string nickName);
+       static void updateClient(std::vector<Channel>& channels, int clientFd, std::string nickName, std::string newName);
 };      
+
 // get channel by name

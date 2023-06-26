@@ -1,6 +1,6 @@
 #include "../classes/Server.hpp"
 #include <csignal>
-extern bool test;
+
 Server::Server(unsigned int port, std::string password) :
     port(port), password(password), socketFd(0), hostName("IRCSERVER") {
     std::cout << "Server Constructor" << std::endl;
@@ -26,9 +26,9 @@ void Server::createSocket() {
         throw std::runtime_error("Failed to set SO_REUSEADDR option.");
     }
     //testing to see if changes
-   if(fcntl(socketFd, F_SETFL, O_NONBLOCK)){
-        std::cout << "error fcntl " << std::endl;
-   }
+  if (fcntl(socketFd, F_SETFL, O_NONBLOCK) == -1) {
+    std::cout << Red << "Error setting socket to non-blocking mode."<< Reset << std::endl;
+}
     bindSocket();
     listening();
 }
@@ -60,7 +60,7 @@ void Server::bindSocket() {
 void Server::listening() {
     struct sockaddr_in clientAddr;
     socklen_t clientAddrLen = sizeof(clientAddr);
-    listen(socketFd, 5);
+    listen(socketFd, 1000);
     std::cout << Green << "Listening Clients Connections ..." << Reset << std::endl;
     // Create a vector of pollfd structures to hold file descriptors and events
     pollfd serverPollFd;
@@ -69,9 +69,6 @@ void Server::listening() {
     serverPollFd.revents = 0;
     pollFds.push_back(serverPollFd);
     while (true) {
-        if (test){
-            printData();
-        }
         // Wait for activity on any of the monitored file descriptors
         int pollResult = poll(pollFds.data(), pollFds.size(), -1);
         if (pollResult == -1) {
@@ -92,36 +89,99 @@ void Server::listening() {
                 pollFds.push_back(clientPollFd);
             }
         }
-        handleCommunication(pollFds);
+        try{
+            handleCommunication(pollFds);
+        }
+        catch(...){}
     }
 }
 
+// void Server::handleCommunication(std::vector<pollfd>& pollFds) {
+//     // Iterate through all the file descriptors in the vector
+//     char buffer[1024];
+    
+//     for (int i = pollFds.size() - 1; i >= 1; --i) {
+//         if (pollFds[i].revents & POLLIN) {
+//             // Receive Data from Client
+//             bzero(buffer, sizeof(buffer)); // Clear buffer before receiving a new message
+//             while (!strstr(buffer, "\r\n")){
+//                 int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
+//                 if (recvBytes < 0) {
+//                     throw std::runtime_error("Failed to receive data from client.");
+//                 } else if (recvBytes == 0) {
+//                     // Client closed the connection
+//                     close(pollFds[i].fd);
+//                     pollFds.erase(pollFds.begin() + i);
+//                     continue;
+//                 }
+//                 if (strstr(buffer, "CAP")){
+//                     while (!strstr(buffer, "USER")){
+//                        recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
+//                         if (recvBytes < 0) {
+//                             throw std::runtime_error("Failed to receive data from client.");
+//                         } else if (recvBytes == 0) {
+//                             // Client closed the connection
+//                             close(pollFds[i].fd);
+//                             pollFds.erase(pollFds.begin() + i);
+//                             continue;
+//                         } 
+//                     }
+//                 }
+//             }
+//             std::string message(buffer);
+//             bzero(buffer, sizeof(buffer)); // Clear buffer before receiving a new message
+//             handleClientMessage(message, pollFds[i].fd);
+//         }
+//     }
+// }
+
 void Server::handleCommunication(std::vector<pollfd>& pollFds) {
     // Iterate through all the file descriptors in the vector
+    char buffer[1024];
+
     for (int i = pollFds.size() - 1; i >= 1; --i) {
         if (pollFds[i].revents & POLLIN) {
-            char buffer[1024];
-            memset(buffer, 0, sizeof(buffer));
             // Receive Data from Client
-            int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer) - 1, 0);
-            if (recvBytes < 0) {
-                throw std::runtime_error("Failed to receive data from client.");
+            bzero(buffer, sizeof(buffer)); // Clear buffer before receiving a new message
+            std::string message;
+
+            while (!strstr(buffer, "\r\n")) {
+                int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
+                if (recvBytes < 0) {
+                    throw std::runtime_error("Failed to receive data from client.");
+                } else if (recvBytes == 0) {
+                    // Client closed the connection
+                    close(pollFds[i].fd);
+                    pollFds.erase(pollFds.begin() + i);
+                    continue;
+                }
+
+                message += buffer;
             }
-            else if (recvBytes == 0) {
-                // Client closed the connection
-                close(pollFds[i].fd);
-                pollFds.erase(pollFds.begin() + i);
-                // --i;
-                continue;
+
+            if (strstr(message.c_str(), "CAP") && !strstr(message.c_str(), "USER")) {
+                // Wait for the USER message
+                while (!strstr(message.c_str(), "USER")) {
+                    bzero(buffer, sizeof(buffer));
+                    int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
+                    if (recvBytes < 0) {
+                        throw std::runtime_error("Failed to receive data from client.");
+                    } else if (recvBytes == 0) {
+                        // Client closed the connection
+                        close(pollFds[i].fd);
+                        pollFds.erase(pollFds.begin() + i);
+                        continue;
+                    }
+                    message += buffer;
+                }
             }
-            else {
-                buffer[recvBytes] = '\0';
-                std::string message(buffer);
-                handleClientMessage(message, pollFds[i].fd);
-            }
+
+            handleClientMessage(message, pollFds[i].fd);
         }
     }
 }
+
+
 
 void Server::handleClientMessage(std::string message, int& clientFd){
     int sendingStatus;
@@ -129,27 +189,6 @@ void Server::handleClientMessage(std::string message, int& clientFd){
     std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
     std::string response;
     CommandHandler::handleCommand(*this, clientFd, message, response);
-    // If there is a connection refuse then delete the fd of the client
-    if (response == "ERROR :Connection refused: NickName already taken"){
-        for (std::vector<pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it){
-            if (it->fd == clientFd){
-                // it = pollFds.erase(it);
-				pollFds.erase(it);
-                //  --it;
-            }
-        }
-    }
-    if (response == "QUIT :leaving\r\n")
-    {
-		// Remove filedescriptor if client send QUIT message
-       for (std::vector<pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it){
-            if (it->fd == clientFd){
-                //  it = pollFds.erase(it);
-				pollFds.erase(it);
-                //  --it;
-            }
-        } 
-    }
     sendingStatus = send(clientFd, response.c_str(), response.length(), 0);
     if (sendingStatus == -1){
         std::cout << Red << "Error Sending response from the server" << Reset << std::endl;
@@ -181,6 +220,16 @@ void Server::printData(){
         std::cout << "Topic " << it->getTopic() << std::endl;
         std::cout << "_______________________________" << std::endl;
     }
+}
+
+bool Server::completedMessage(std::string &message){
+    std::size_t terminationPos = message.find("\r\n");
+    if (terminationPos != std::string::npos) {
+        std::cout << "Completed Message" << std::endl;
+        return true;
+    }
+    std::cout << "Imcompleted Message" << std::endl;
+    return false;
 }
 
 //getters

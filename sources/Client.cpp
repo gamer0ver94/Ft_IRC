@@ -5,7 +5,8 @@ Client::Client(int socket, std::string nickName, std::string userName, std::stri
 	std::cout << Yellow << "Client Created" << Reset << std::endl;
 }
 Client::~Client(){
-	// close(socketFd);
+	std::cout << Red<< "CLIENT DESTRUCTED" << Reset<< std::endl;
+	//close(socketFd);
 }
 
 int Client::getSocketFd()
@@ -54,4 +55,8 @@ void Client::setNickName(std::string newNickName){
 
 void Client::setUserName(std::string newUserName){
 	this->userName = newUserName;
+}
+
+void Client::setHostName(std::string newUserName){
+	this->hostName = newUserName;
 }

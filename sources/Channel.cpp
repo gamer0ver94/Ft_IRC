@@ -6,6 +6,7 @@ channelName(name), iMode(false), tMode(false), kMode(false), oMode(false){
 	(void)op;
 }
 Channel::~Channel(){
+	std::cout << Red<< "Channel DESTRUCTED" << Reset<< std::endl;
 }
 
 std::string Channel::getChannelName()

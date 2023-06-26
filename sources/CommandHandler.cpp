@@ -25,40 +25,58 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 	std::vector<int> op;
     switch (messageType){
         case 0 :    //CommandCAP
-             response = handleCapabilityNegotiation(message);
-            break;
-        case 1 :    //CommandNICK/USER
+            //  response = handleCapabilityNegotiation(message);
+            //  sendExtraMessage(clientFd, response);
             parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password);
             if (password.empty() || server.getPassword() != password){
-                response = "ERROR :Connection refused: Password Does Not Match\r\n";
+                response = ERROR_BADPASSWORD();
                 return;
             }
             for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
                 if (it->second->getNickName() == nickName){
-                    response = "ERROR :Connection refused: NickName already taken\r\n";
+                    response = ERROR_NICKTAKEN();
                     return;
                 }
             }
             client = new Client(clientFd, nickName, userName, hostName, serverHostName, realName);
             server.getClients().insert(std::pair<int, Client*>(clientFd, client));
-            response = ":" + server.getHostName() + " 001 " + server.getClients()[clientFd]->getNickName() + " :" +  readFile("wel.txt")  + " " + client->getNickName() + " " + readFile("come.txt") + "\r\n";
+            response = WELCOME_SERVER(server.getHostName(),server.getClients()[clientFd]->getNickName(), readFile("wel.txt"), readFile("come.txt"));
             break;
-        case 2 :    //CommandNICK
+        case 1 :    //CommandNICK/USER
+            parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password);
+            if (password.empty() || server.getPassword() != password){
+                response = ERROR_BADPASSWORD();
+                return;
+            }
+            for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
+                if (it->second->getNickName() == nickName){
+                    response = ERROR_NICKTAKEN();
+                    return;
+                }
+            }
+            client = new Client(clientFd, nickName, userName, hostName, serverHostName, realName);
+            server.getClients().insert(std::pair<int, Client*>(clientFd, client));
+            response = WELCOME_SERVER(server.getHostName(),server.getClients()[clientFd]->getNickName(), readFile("wel.txt"), readFile("come.txt"));
+            break;
+        case 2 :    // Command NICK
             while (iss >> word) {
                 words.push_back(word);
             }
+            nickName = server.getClients()[clientFd]->getNickName();
             server.getClients()[clientFd]->setNickName(words[1]);
             server.getClients()[clientFd]->setUserName(words[1]);
-            response = ":" + server.getHostName() + " 001 " + server.getClients()[clientFd]->getNickName() + " :Name changed to " + server.getClients()[clientFd]->getNickName() + "\r\n";
+            server.getClients()[clientFd]->setHostName(words[1]);
+            updateClient(server.getChannels(), clientFd, nickName, words[1]);
+            response = NICKCHANGE_MSG(server.getHostName(),server.getClients()[clientFd]->getNickName());
             break;
         case 3 : // Command WHOIS
-           response = ":" + server.getHostName() + " 311 " + server.getClients()[clientFd]->getNickName() + " localhost " + server.getClients()[clientFd]->getNickName() + " *\r\n";
+            response = WHOIS_MSG(server.getHostName(),server.getClients()[clientFd]->getNickName());
            break;
         case 4 : // Command ENDCAP
-            response = ":localhost CAP * ACK :END\r\n";
+            response = CAP_END();
             break;
         case 5 : // Command PING
-            response = "PONG " + server.getHostName() + "\r\n";
+            response = PONG_MSG(server.getHostName());
             server.printData();
             break;
         case 6 : // Command Mode
@@ -89,16 +107,17 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 else if (mode == "+o"){
                     extractNewOp(message, nickName, channelName);
                     getChannelByName(server.getChannels(), channelName).getOpClientFd().push_back(getClientByName(server.getClients(), nickName).getSocketFd());
+                    sendExtraMessage(getClientByName(server.getClients(), nickName).getSocketFd(), NOTICE_JOIN(channelName,"", "You are now op\r\n"));
                 }
                 else if (mode == "-o"){
                     extractNewOp(message, nickName, channelName);
                     std::cout << channelName << std::endl;
                     removeElementByFd(getChannelByName(server.getChannels(), channelName).getOpClientFd(), getClientByName(server.getClients(), nickName).getSocketFd());
                 }
-                response = ":" + server.getHostName() + " MODE " + channelName + " " + mode + "\r\n";
+                response = MODE_MEG(server.getHostName(), channelName, mode);
             }
             catch(...){
-                response = ":" + server.getHostName() + " 502 " + server.getClients()[clientFd]->getNickName() + " :You are now online\r\n";
+                response = ":" + server.getHostName() + " 502 " + server.getClients()[clientFd]->getNickName() + " :You are now online as " + server.getClients()[clientFd]->getNickName() + "\r\n";
             }
             break;
         case 7 :
@@ -106,6 +125,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             break;
         case 8 : // Command Join
             parseChannelName(message, channelName);
+            // check if channel exit and create it;
             if (!doesChannelExist(server.getChannels(), channelName)){
                 std::cout << Cyan << "###" << server.getClients()[clientFd]->getNickName() << " created :" << channelName << "###" << Reset << std::endl;
                 server.getChannels().push_back(Channel(channelName, *server.getClients()[clientFd]));
@@ -116,11 +136,13 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     }
                 }
             }
+            //check if someone
             if (getChannelByName(server.getChannels(), channelName).getIMode() == false &&
             getChannelByName(server.getChannels(), channelName).getPassword().empty()){
                 for(it = server.getChannels().begin(); it != server.getChannels().end();++it){
 	    	    	if ((*it).getChannelName() == channelName){
 	    	    		(*it).getInvitedClients().insert(std::make_pair<std::string, Client>(server.getClients()[clientFd]->getNickName(), *server.getClients()[clientFd]));
+                        std::cout << "client inserted on channel" << std::endl;
 	    	    	}
 	    	    }
                 response2 = ":" + server.getClients()[clientFd]->getNickName() + "!~" + server.getClients()[clientFd]->getUserName() + "@" + server.getHostName() + " JOIN " + channelName + "\r\n";
@@ -130,13 +152,15 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     std::cout << "error sending nick" << std::endl;
                 }
                 else if (sendStatus > 0){
-	    	        std::cout << Blue << "Server Sended Response with: " << Reset << response << std::endl;
+	    	        std::cout << Blue << "=> Server Sended Response with: " << Reset << response2 << std::endl;
                 }
                 std::cout << Cyan << "###" << server.getClients()[clientFd]->getNickName() << " joined :" << channelName << "###" << Reset << std::endl;
             }
             else{
                 response = ":" + server.getHostName() + " 473 " + server.getClients()[clientFd]->getNickName() + " " + channelName + " :Cannot join channel without invitation\r\n";
             }
+            response2 = NOTICE_JOIN(channelName, server.getClients()[clientFd]->getNickName(), " as joined the channel\r\n");
+            messageAllChannelClients(getChannelByName(server.getChannels(), channelName), clientFd, response2);
             break;
         case 9 : // Command Part
         //send this message to all client after deleting this client of the channel
@@ -172,8 +196,9 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 }
             }
             try{
+                // if op use part the op is the next client
                 if (getChannelByName(server.getChannels(), channelName).getOpClientFd().empty()){
-				getChannelByName(server.getChannels(), channelName).getOpClientFd().push_back(getChannelByName(server.getChannels(), channelName).getInvitedClients().begin()->second.getSocketFd());
+				    getChannelByName(server.getChannels(), channelName).getOpClientFd().push_back(getChannelByName(server.getChannels(), channelName).getInvitedClients().begin()->second.getSocketFd());
 			    }
             }
             catch(std::exception &e){
@@ -187,21 +212,12 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 if ((*it).getChannelName() == channelName){
                     if (isInChannel(clientFd, (*it))){
                         for(iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){
-                            if (iter->second.getNickName() == server.getClients()[clientFd]->getNickName()){
+                            if (iter->second.getSocketFd() == server.getClients()[clientFd]->getSocketFd()){
                                 //skip
                             }
                             else{
 	    				        response = ":" + server.getClients()[clientFd]->getNickName() + "!~" + server.getClients()[clientFd]->getUserName() + " PRIVMSG " + channelName + " :" + messageContent + "\r\n";
-                                int sendStatus = send(iter->second.getSocketFd(),response.c_str(),response.length(), 0);
-                                if (sendStatus <= 0){
-                                    std::cout << Red << "Failed to send message" << Reset << std::endl;
-                                }
-                                else if (sendStatus > 0){
-                                    std::cout << Cyan<< server.getClients()[clientFd]->getNickName() << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.getNickName() << Reset << std::endl;
-                                }
-					            if(iter->second.getSocketFd() < 0){
-						            std::cerr << "socket does not exit" << std::endl;
-	    				        }
+                                sendExtraMessage(iter->second.getSocketFd(), response);
                             }
                         }
                     }
@@ -211,11 +227,14 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             break;
         case 11 :
             response = ":QUIT :leaving\r\n";
-            for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
-                if (it->second->getNickName() == nickName){
-                   server.getClients().erase(it);
-                }
+            try {
+                deleteClientFromAllChannels(server.getChannels(),clientFd, server.getClients()[clientFd]->getNickName());
+                std::cout << "Deleted" << std::endl;
             }
+            catch(std::exception &e){
+                std::cout << e.what() << std::endl;
+            }
+            deleteClient(server.getClients(), clientFd);
             break;
         case 12 : // Command Kick / ps debugg if he tries to kick himself
             parseKickMessage(message, channelName ,nickName);
@@ -228,14 +247,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                         // isInChannel(getChannelByName(server.channels, channelName).invitedClients[nickName].socketFd, getChannelByName(server.channels, channelName));
                     	for(iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){
                             if (iter->second.getSocketFd() != clientFd){
-                                int sendStatus = send(iter->second.getSocketFd(),response.c_str(),response.length(), 0);
-                    	        if (sendStatus <= 0){
-                    	            std::cout << Red << "Failed to send message" << Reset << std::endl;
-                    	        }
-                    	        else if (sendStatus > 0){
-							    	response = ":" + nickName + " PART " + channelName + "\r\n";
-                    	            std::cout << Cyan<< server.getClients()[clientFd]->getNickName() << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.getNickName() << Reset << std::endl;
-                    	        }
+                              sendExtraMessage(iter->second.getSocketFd(), response);
                             }
                     	}
                         //delete channel if there is no one
@@ -276,8 +288,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     messageAllChannelClients(getChannelByName(server.getChannels(), channelName), clientFd, response);
                 }
                 else{
-                    response = ":" + server.getHostName() + " 482 " + server.getHostName() + " " + channelName + " :You're not a channel operator\r\n";
-;
+                    response = ":" + server.getHostName() + " 482 " + server.getHostName() + " " + channelName + " :You're not a channel operator\r\n";;
                 }
             }
             catch(std::exception &e){
@@ -361,49 +372,49 @@ bool CommandHandler::parseNickNameMessage(const std::string& message, std::strin
 }
 
 int CommandHandler::getMessageType(std::string message){
-    if (message.find("CAP LS\r\n ") != std::string::npos){
+    if (message.find("CAP LS") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 0;
     }
-    else if (message.find("NICK ") != std::string::npos && message.find("USER ") != std::string::npos){
+    else if (message.find("NICK ") != std::string::npos && message.find("USER ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 1;
     }
-    else if (message.find("NICK ") != std::string::npos){
+    else if (message.find("NICK ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 2;
     }
-    else if (message.find("WHOIS ") != std::string::npos){
+    else if (message.find("WHOIS ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 3;
     }
-    else if (message.find("CAP END\r\n") != std::string::npos){
+    else if (message.find("CAP END") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 4;
     }
-    else if (message.find("PING ") != std::string::npos){
+    else if (message.find("PING ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 5;
     }
-    else if (message.find("MODE ") != std::string::npos){
+    else if (message.find("MODE ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 6;
     }
-    else if(message.find("CAP ") != std::string::npos){
+    else if(message.find("CAP ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 7;
     }
-    else if (message.find("JOIN ") != std::string::npos){
+    else if (message.find("JOIN ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 8;
     }
-    else if (message.find("PART ") != std::string::npos){
+    else if (message.find("PART ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 9;
     }
-    else if (message.find("PRIVMSG ") != std::string::npos){
+    else if (message.find("PRIVMSG ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 10;
     }
-    else if (message.find("QUIT ") != std::string::npos){
+    else if (message.find("QUIT ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 11;
     }
-    else if (message.find("KICK ") != std::string::npos){
+    else if (message.find("KICK ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 12;
     }
-    else if (message.find("INVITE ") != std::string::npos){
+    else if (message.find("INVITE ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 13;
     }
-    else if (message.find("TOPIC ") != std::string::npos){
+    else if (message.find("TOPIC ") != std::string::npos && message.find("\r\n") != std::string::npos){
         return 14;
     }
     return -1;
@@ -577,6 +588,70 @@ void CommandHandler::removeElementByFd(std::vector<int>& vec, int id) {
         if (*it == id) {
             vec.erase(it);
             return;
+        }
+    }
+}
+
+void CommandHandler::sendExtraMessage(int fd, std::string message){
+    ssize_t sendStatus;
+    sendStatus = send(fd, message.c_str(), message.length(), 0);
+    if (sendStatus <= 0){
+        std::cout << Red << "Failed to send message" << Reset << std::endl;
+    }
+    else if (sendStatus > 0){
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << message << std::endl;
+    }
+}
+
+void CommandHandler::deleteClient(std::map<int, Client*>& clients, int clientFd) {
+    std::map<int, Client*>::iterator iter = clients.find(clientFd);
+    if (iter != clients.end()) {
+        delete iter->second;
+        clients.erase(iter);
+    }
+}
+
+void CommandHandler::deleteClientFromAllChannels(std::vector<Channel>& channels, int clientFd, std::string nickName){
+    int status = 0;
+    for (size_t i = 0; i < channels.size();i++) {
+        if (isInChannel(clientFd, channels[i])){
+            //delete Client from Channel
+            channels[i].getInvitedClients().erase(nickName);
+            status++;
+            //if is Operator remove it
+            if (isOperator(channels[i].getOpClientFd(), clientFd)){
+                removeElementByFd(channels[i].getOpClientFd(), clientFd);
+                //if there is no clients on channel
+                if (channels[i].getInvitedClients().empty()){
+                    //deleteChannel
+                    channels.erase(channels.begin() + i);
+                }
+                else{
+                    //if still clients and there is no operator the first one will be it
+                    if (channels[i].getOpClientFd().empty()){
+                        std::map<std::string, Client>::iterator it = channels[i].getInvitedClients().begin();
+                        channels[i].getOpClientFd().push_back(it->second.getSocketFd());
+                    }
+                }
+            }
+        }
+    }
+    if (status == 0)
+    {
+        throw std::runtime_error("Client Not In Any Channel");
+    }
+}
+
+void CommandHandler::updateClient(std::vector<Channel>& channels, int clientFd, std::string nickName, std::string newName){
+    for (size_t i = 0; i < channels.size();i++) {
+        if (isInChannel(clientFd, channels[i])){
+            std::map<std::string, Client>::iterator it = channels[i].getInvitedClients().find(nickName);
+           if (it != channels[i].getInvitedClients().end()) {
+                Client& client = it->second;
+                client.setNickName(newName);
+                client.setUserName(newName);
+                client.setHostName(newName);
+           }
         }
     }
 }

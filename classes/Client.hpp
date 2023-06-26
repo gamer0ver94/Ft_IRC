@@ -18,6 +18,7 @@ class Client{
 		//setter
 		void setNickName(std::string newNickName);
 		void setUserName(std::string newUserName);
+		void setHostName(std::string newUserName);
 	private :
         std::string userHost;
         std::string localHost;

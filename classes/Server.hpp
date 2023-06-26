@@ -36,10 +36,10 @@ class Server{
 		int getSocketFd();
 		std::string getHostName();
 		std::vector<Channel> &getChannels();
-
 		void printData();
 	private :
 		// Properties
+		// std::map<int, std::string> buffer;
 		unsigned int port;
 		std::string password;
 		int socketFd;
@@ -55,4 +55,5 @@ class Server{
 		std::string readFile(const std::string& filePath);
 		void handleCommunication(std::vector<pollfd>& pollFds);
 		void handleClientMessage(std::string message, int& clientFd);
+		bool completedMessage(std::string &message);
 };
