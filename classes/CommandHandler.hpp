@@ -2,7 +2,7 @@
 #include <iostream>
 #include "../classes/Server.hpp"
 #include "../classes/Client.hpp"
-#define NOTICE_JOIN(target, client, message) ("NOTICE " + target + " :" + client + message)
+#define NOTICE_MSG(hostName, target, message) (":" + hostName + " NOTICE " + target + " :" + message + "\r\n")
 #define ERROR_BADPASSWORD() ("ERROR :Connection refused: Password Does Not Match\r\n")
 #define ERROR_NICKTAKEN() ("ERROR :Connection refused: NickName already taken\r\n");
 #define WHOIS_MSG(hostName, nickName) (":" + hostName + " 311 " + nickName + " " + hostName + " " + nickName + " *\r\n")
@@ -44,6 +44,8 @@ class CommandHandler{
         static void deleteClient(std::map<int, Client*>& clients, int clientFd);
        static void deleteClientFromAllChannels(std::vector<Channel>& channels, int clientFd, std::string nickName);
        static void updateClient(std::vector<Channel>& channels, int clientFd, std::string nickName, std::string newName);
-};      
+       static bool isInvitedToChannel(std::vector<int> &invitedVector, int clientFd);
+        static bool isPasswordGood(std::string message, std::string password);
+};
 
 // get channel by name

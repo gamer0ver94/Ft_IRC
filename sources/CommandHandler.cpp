@@ -107,7 +107,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 else if (mode == "+o"){
                     extractNewOp(message, nickName, channelName);
                     getChannelByName(server.getChannels(), channelName).getOpClientFd().push_back(getClientByName(server.getClients(), nickName).getSocketFd());
-                    sendExtraMessage(getClientByName(server.getClients(), nickName).getSocketFd(), NOTICE_JOIN(channelName,"", "You are now op\r\n"));
+                    sendExtraMessage(getClientByName(server.getClients(), nickName).getSocketFd(), NOTICE_MSG(server.getHostName(), channelName, "You are now op"));
                 }
                 else if (mode == "-o"){
                     extractNewOp(message, nickName, channelName);
@@ -137,8 +137,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 }
             }
             //check if someone
-            if (getChannelByName(server.getChannels(), channelName).getIMode() == false &&
-            getChannelByName(server.getChannels(), channelName).getPassword().empty()){
+            if (((getChannelByName(server.getChannels(), channelName).getIMode() == false) && (getChannelByName(server.getChannels(), channelName).getPassword().empty())) ||
+    ((getChannelByName(server.getChannels(), channelName).getIMode() == true) && (getChannelByName(server.getChannels(), channelName).getPassword().empty()) && (isInvitedToChannel(getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel(), clientFd))) || 
+    (((getChannelByName(server.getChannels(), channelName).getIMode() == false) && (!getChannelByName(server.getChannels(), channelName).getPassword().empty())) && (isPasswordGood(message, getChannelByName(server.getChannels(), channelName).getPassword()))) || 
+    ((getChannelByName(server.getChannels(), channelName).getIMode() == true) && (!getChannelByName(server.getChannels(), channelName).getPassword().empty()) && (isPasswordGood(message, getChannelByName(server.getChannels(), channelName).getPassword())) && (isInvitedToChannel(getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel(), clientFd)))) {
                 for(it = server.getChannels().begin(); it != server.getChannels().end();++it){
 	    	    	if ((*it).getChannelName() == channelName){
 	    	    		(*it).getInvitedClients().insert(std::make_pair<std::string, Client>(server.getClients()[clientFd]->getNickName(), *server.getClients()[clientFd]));
@@ -146,7 +148,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 	    	    	}
 	    	    }
                 response2 = ":" + server.getClients()[clientFd]->getNickName() + "!~" + server.getClients()[clientFd]->getUserName() + "@" + server.getHostName() + " JOIN " + channelName + "\r\n";
-                response = ":" + server.getHostName() + " 332 " + server.getClients()[clientFd]->getNickName() + " " + channelName + getChannelByName(server.getChannels(), channelName).getTopic() + "\r\n";
                 sendStatus = send (clientFd, response2.c_str(), response2.length(), 0);
                 if (sendStatus == -1){
                     std::cout << "error sending nick" << std::endl;
@@ -155,12 +156,12 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 	    	        std::cout << Blue << "=> Server Sended Response with: " << Reset << response2 << std::endl;
                 }
                 std::cout << Cyan << "###" << server.getClients()[clientFd]->getNickName() << " joined :" << channelName << "###" << Reset << std::endl;
+                response2 = NOTICE_MSG(server.getHostName(), channelName, server.getClients()[clientFd]->getNickName() + " as joined the channel\r\n");
+                messageAllChannelClients(getChannelByName(server.getChannels(), channelName), clientFd, response2);
             }
             else{
                 response = ":" + server.getHostName() + " 473 " + server.getClients()[clientFd]->getNickName() + " " + channelName + " :Cannot join channel without invitation\r\n";
             }
-            response2 = NOTICE_JOIN(channelName, server.getClients()[clientFd]->getNickName(), " as joined the channel\r\n");
-            messageAllChannelClients(getChannelByName(server.getChannels(), channelName), clientFd, response2);
             break;
         case 9 : // Command Part
         //send this message to all client after deleting this client of the channel
@@ -179,13 +180,17 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                         }
 					}
                     (*it).getInvitedClients().erase(nickName);
-                    for(iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){
-                        int sendStatus = send(iter->second.getSocketFd(),response.c_str(),response.length(), 0);
-                        if (sendStatus <= 0){
-                            std::cout << Red << "Failed to send message" << Reset << std::endl;
-                        }
-                        else if (sendStatus > 0){
-                            std::cout << Cyan<< server.getClients()[clientFd]->getNickName() << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.getNickName() << Reset << std::endl;
+                    //send message to everyone saying he is left
+                    if (isInChannel(clientFd,(*it)))
+                    {
+                        for(iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){
+                            int sendStatus = send(iter->second.getSocketFd(),response.c_str(),response.length(), 0);
+                            if (sendStatus <= 0){
+                                std::cout << Red << "Failed to send message" << Reset << std::endl;
+                            }
+                            else if (sendStatus > 0){
+                                std::cout << Cyan<< server.getClients()[clientFd]->getNickName() << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.getNickName() << Reset << std::endl;
+                            }
                         }
                     }
                     if ((*it).getInvitedClients().empty()) {
@@ -239,44 +244,55 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
         case 12 : // Command Kick / ps debugg if he tries to kick himself
             parseKickMessage(message, channelName ,nickName);
 			std::cout << nickName << std::endl;
-            response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
+            response = NOTICE_MSG(channelName, channelName, " You have been KICKED from the Channel </part> to quit the Channel!");
             for (it = server.getChannels().begin();it != server.getChannels().end(); ++it){
                 if ((*it).getChannelName() == channelName){
 					if (isOperator((*it).getOpClientFd() , clientFd)){
-						(*it).getInvitedClients().erase(nickName);
-                        // isInChannel(getChannelByName(server.channels, channelName).invitedClients[nickName].socketFd, getChannelByName(server.channels, channelName));
                     	for(iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){
-                            if (iter->second.getSocketFd() != clientFd){
-                              sendExtraMessage(iter->second.getSocketFd(), response);
+                            if (iter->second.getNickName() == nickName){
+                                sendExtraMessage(iter->second.getSocketFd(), response);
+                                response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
+                                break;
                             }
                     	}
+                        (*it).getInvitedClients().erase(nickName);
                         //delete channel if there is no one
                     	if ((*it).getInvitedClients().empty()) {
                     	    it = server.getChannels().erase(it);
                     	    --it;
                     	}
+                        break;
 					}
 					else{
 						response = NOTOPERATOR(server.getHostName(), channelName);
+                        break;
 					}
                 }
             }
+            response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
             break;
         case 13 : // Command Invite
             try{
+                while (iss >> word) {
+                words.push_back(word);
+                }
+                nickName = words[1];
                 //std::cout << channelName << std::endl;
                 parseChannelName(message, channelName);
                 if (getChannelByName(server.getChannels(),channelName).getIMode() == true){
                     getChannelByName(server.getChannels(),channelName).getInvitedClientsToChannel().push_back(getClientByName(server.getClients(),extractInvitedClient(message)).getSocketFd());
-                    response = "invited";
+                    getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel().push_back(getClientByName(server.getClients(), nickName).getSocketFd());
+                    response = ":" + server.getHostName() + " 341 " + server.getClients()[clientFd]->getNickName() + " " + channelName + " :Inviting you to <channel>\r\n";
+                    // sendExtraMessage(getClientByName(server.getClients(), nickName).getSocketFd(), response);
                 }
                 else{
-                    response = ":NOTICE " + server.getClients()[clientFd]->getNickName() + " :Error 518: You need to set mode +i to invite someone to the channel";
+                    response = ":NOTICE " + channelName + " :Error 518: You need to set mode +i to invite someone to the channel";
                 }
             }
             catch(std::exception &e){
                 std::cout << e.what() << std::endl;
-                response = "cant invite";
+                response = ":" + server.getHostName() + " 401 " + server.getClients()[clientFd]->getNickName() + " :No such nick\r\n";
+
             }
             break;
         case 14 : // Command Topic
@@ -601,6 +617,9 @@ void CommandHandler::sendExtraMessage(int fd, std::string message){
     else if (sendStatus > 0){
         std::cout << Blue << "=> Server Sended Response with: " << Reset << message << std::endl;
     }
+    else{
+        std::cout << Blue << "=> Server Sended Response with: " << Reset << message;
+    }
 }
 
 void CommandHandler::deleteClient(std::map<int, Client*>& clients, int clientFd) {
@@ -654,4 +673,28 @@ void CommandHandler::updateClient(std::vector<Channel>& channels, int clientFd, 
            }
         }
     }
+}
+
+bool CommandHandler::isInvitedToChannel(std::vector<int> &invitedVector, int clientFd){
+    for(std::vector<int>::iterator it = invitedVector.begin(); it != invitedVector.end();++it){
+        if (*it == clientFd){
+            invitedVector.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CommandHandler::isPasswordGood(std::string message, std::string password){
+    std::istringstream iss(message);
+    std::string word;
+    std::vector<std::string> words;
+    std::string topic;
+    while (iss >> word) {
+        words.push_back(word);
+    }
+    if (words[2] == password){
+        return true;
+    }
+    return false;
 }

@@ -73,3 +73,53 @@ when create a channel need to change the op status from the client to true when 
 
 //problem when last client part from channel
 //WHOIS IS DISPLAYING BAD NAME AFTER NICK <something>
+//KICK should not be able to kick himself
+
+
+
+
+
+
+  //send this message to all client after deleting this client of the channel
+            parseChannelName(message, channelName);
+            nickName = server.getClients()[clientFd]->getNickName();
+            response = ":" + nickName + " PART " + channelName + "\r\n";
+            for (it = server.getChannels().begin();it != server.getChannels().end(); ++it){
+                if ((*it).getChannelName() == channelName){
+                    // delete the fd from the op
+                    if (isOperator((*it).getOpClientFd(), clientFd)){
+						for (std::vector<int>::iterator iter = it->getOpClientFd().begin(); iter != it->getOpClientFd().end(); ++iter) {
+                            if (*iter == clientFd) {
+                              it->getOpClientFd().erase(iter);
+                              break;  // Break out of the loop after erasing the element
+                            }
+                        }
+					}
+                    (*it).getInvitedClients().erase(nickName);
+                    for(iter = (*it).getInvitedClients().begin(); iter != (*it).getInvitedClients().end();++iter){
+                        int sendStatus = send(iter->second.getSocketFd(),response.c_str(),response.length(), 0);
+                        if (sendStatus <= 0){
+                            std::cout << Red << "Failed to send message" << Reset << std::endl;
+                        }
+                        else if (sendStatus > 0){
+                            std::cout << Cyan<< server.getClients()[clientFd]->getNickName() << " from channel -> " << channelName << " sended: " << messageContent << "to " << iter->second.getNickName() << Reset << std::endl;
+                        }
+                    }
+                    if ((*it).getInvitedClients().empty()) {
+                        it = server.getChannels().erase(it);
+                        --it;
+                    }
+					break;
+                }
+            }
+            try{
+                // if op use part the op is the next client
+                if (getChannelByName(server.getChannels(), channelName).getOpClientFd().empty()){
+				    getChannelByName(server.getChannels(), channelName).getOpClientFd().push_back(getChannelByName(server.getChannels(), channelName).getInvitedClients().begin()->second.getSocketFd());
+			    }
+            }
+            catch(std::exception &e){
+                std::cout << e.what() << std::endl;
+            }
+            response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
+            break;
