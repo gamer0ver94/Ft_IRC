@@ -138,9 +138,9 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             //check if someone
             if (((getChannelByName(server.getChannels(), channelName).getIMode() == false) && (getChannelByName(server.getChannels(), channelName).getPassword().empty())) ||
-    ((getChannelByName(server.getChannels(), channelName).getIMode() == true) && (getChannelByName(server.getChannels(), channelName).getPassword().empty()) && (isInvitedToChannel(getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel(), clientFd))) || 
-    (((getChannelByName(server.getChannels(), channelName).getIMode() == false) && (!getChannelByName(server.getChannels(), channelName).getPassword().empty())) && (isPasswordGood(message, getChannelByName(server.getChannels(), channelName).getPassword()))) || 
-    ((getChannelByName(server.getChannels(), channelName).getIMode() == true) && (!getChannelByName(server.getChannels(), channelName).getPassword().empty()) && (isPasswordGood(message, getChannelByName(server.getChannels(), channelName).getPassword())) && (isInvitedToChannel(getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel(), clientFd)))) {
+            ((getChannelByName(server.getChannels(), channelName).getIMode() == true) && (getChannelByName(server.getChannels(), channelName).getPassword().empty()) && (isInvitedToChannel(getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel(), clientFd))) || 
+            (((getChannelByName(server.getChannels(), channelName).getIMode() == false) && (!getChannelByName(server.getChannels(), channelName).getPassword().empty())) && (isPasswordGood(message, getChannelByName(server.getChannels(), channelName).getPassword()))) || 
+            ((getChannelByName(server.getChannels(), channelName).getIMode() == true) && (!getChannelByName(server.getChannels(), channelName).getPassword().empty()) && (isPasswordGood(message, getChannelByName(server.getChannels(), channelName).getPassword())) && (isInvitedToChannel(getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel(), clientFd)))) {
                 for(it = server.getChannels().begin(); it != server.getChannels().end();++it){
 	    	    	if ((*it).getChannelName() == channelName){
 	    	    		(*it).getInvitedClients().insert(std::make_pair<std::string, Client>(server.getClients()[clientFd]->getNickName(), *server.getClients()[clientFd]));
@@ -158,6 +158,9 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 std::cout << Cyan << "###" << server.getClients()[clientFd]->getNickName() << " joined :" << channelName << "###" << Reset << std::endl;
                 response2 = NOTICE_MSG(server.getHostName(), channelName, server.getClients()[clientFd]->getNickName() + " as joined the channel\r\n");
                 messageAllChannelClients(getChannelByName(server.getChannels(), channelName), clientFd, response2);
+                //response = ":" + server.getHostName() + " 353 " + server.getClients()[clientFd]->getNickName() + " = " + channelName + " :" + getNameOfClients(getChannelByName(server.getChannels(), channelName).getInvitedClients()) + "\r\n";
+
+                response = ":" + server.getHostName() + " 332 " + server.getClients()[clientFd]->getNickName() + " " + channelName + " :" + getChannelByName(server.getChannels(), channelName).getTopic() + "\r\n";
             }
             else{
                 response = ":" + server.getHostName() + " 473 " + server.getClients()[clientFd]->getNickName() + " " + channelName + " :Cannot join channel without invitation\r\n";
@@ -310,7 +313,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             catch(std::exception &e){
                 std::cout << e.what() << std::endl;
             }
-
             break;
         default :
             response = "Unknown command.\r\n";
@@ -697,4 +699,13 @@ bool CommandHandler::isPasswordGood(std::string message, std::string password){
         return true;
     }
     return false;
+}
+
+std::string CommandHandler::getNameOfClients(std::map<std::string, Client> clients){
+    std::string clientsName = "@";
+    for(std::map<std::string, Client>::iterator it = clients.begin(); it != clients.end(); ++it){
+        clientsName += it->second.getNickName();
+        clientsName += " ";
+    }
+    return clientsName;
 }

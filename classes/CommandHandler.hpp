@@ -46,6 +46,7 @@ class CommandHandler{
        static void updateClient(std::vector<Channel>& channels, int clientFd, std::string nickName, std::string newName);
        static bool isInvitedToChannel(std::vector<int> &invitedVector, int clientFd);
         static bool isPasswordGood(std::string message, std::string password);
+        static std::string getNameOfClients(std::map<std::string, Client> clients);
 };
 
 // get channel by name
