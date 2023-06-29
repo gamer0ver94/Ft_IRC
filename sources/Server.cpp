@@ -96,45 +96,6 @@ void Server::listening() {
     }
 }
 
-// void Server::handleCommunication(std::vector<pollfd>& pollFds) {
-//     // Iterate through all the file descriptors in the vector
-//     char buffer[1024];
-    
-//     for (int i = pollFds.size() - 1; i >= 1; --i) {
-//         if (pollFds[i].revents & POLLIN) {
-//             // Receive Data from Client
-//             bzero(buffer, sizeof(buffer)); // Clear buffer before receiving a new message
-//             while (!strstr(buffer, "\r\n")){
-//                 int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
-//                 if (recvBytes < 0) {
-//                     throw std::runtime_error("Failed to receive data from client.");
-//                 } else if (recvBytes == 0) {
-//                     // Client closed the connection
-//                     close(pollFds[i].fd);
-//                     pollFds.erase(pollFds.begin() + i);
-//                     continue;
-//                 }
-//                 if (strstr(buffer, "CAP")){
-//                     while (!strstr(buffer, "USER")){
-//                        recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
-//                         if (recvBytes < 0) {
-//                             throw std::runtime_error("Failed to receive data from client.");
-//                         } else if (recvBytes == 0) {
-//                             // Client closed the connection
-//                             close(pollFds[i].fd);
-//                             pollFds.erase(pollFds.begin() + i);
-//                             continue;
-//                         } 
-//                     }
-//                 }
-//             }
-//             std::string message(buffer);
-//             bzero(buffer, sizeof(buffer)); // Clear buffer before receiving a new message
-//             handleClientMessage(message, pollFds[i].fd);
-//         }
-//     }
-// }
-
 void Server::handleCommunication(std::vector<pollfd>& pollFds) {
     // Iterate through all the file descriptors in the vector
     char buffer[1024];
@@ -184,17 +145,12 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
 
 
 void Server::handleClientMessage(std::string message, int& clientFd){
-    int sendingStatus;
     std::cout << Magenta << "______________________________________________________________" << Reset << std::endl;
     std::cout << Green << "=> Received Data From Client: " << Reset << message << std::endl;
     std::string response;
     CommandHandler::handleCommand(*this, clientFd, message, response);
-    sendingStatus = send(clientFd, response.c_str(), response.length(), 0);
-    if (sendingStatus == -1){
-        std::cout << Red << "Error Sending response from the server" << Reset << std::endl;
-    }
-    else{
-        std::cout << Blue << "=> Server Sended Response with: " << Reset << response;
+    if (!response.empty()){
+        CommandHandler::sendExtraMessage(clientFd, response);
     }
 }
 

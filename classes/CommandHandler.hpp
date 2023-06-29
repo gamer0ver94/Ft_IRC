@@ -21,6 +21,7 @@ class CommandHandler{
     public:
         static void handleCommand(Server& server, int &clientFd, std::string message, std::string &response);
 		static bool isInChannel(int clientFd, Channel &channel);
+        static void sendExtraMessage(int fd, std::string message);
     private:
         static int getMessageType(std::string message);
         static std::string handleCapabilityNegotiation(const std::string& message);
@@ -40,13 +41,13 @@ class CommandHandler{
         static void messageAllChannelClients(Channel channel, int client, std::string message);
         static void extractNewOp(std::string message, std::string &nickName, std::string &channelName);
         static void removeElementByFd(std::vector<int>& vec, int id);
-        static void sendExtraMessage(int fd, std::string message);
         static void deleteClient(std::map<int, Client*>& clients, int clientFd);
        static void deleteClientFromAllChannels(std::vector<Channel>& channels, int clientFd, std::string nickName);
        static void updateClient(std::vector<Channel>& channels, int clientFd, std::string nickName, std::string newName);
        static bool isInvitedToChannel(std::vector<int> &invitedVector, int clientFd);
         static bool isPasswordGood(std::string message, std::string password);
         static std::string getNameOfClients(std::map<std::string, Client> clients);
+        static bool isRequest(std::string message);
 };
 
 // get channel by name
