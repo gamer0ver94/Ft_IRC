@@ -7,7 +7,7 @@
 #define ERROR_NICKTAKEN() ("ERROR :Connection refused: NickName already taken\r\n");
 #define WHOIS_MSG(hostName, nickName) (":" + hostName + " 311 " + nickName + " " + hostName + " " + nickName + " *\r\n")
 #define CAP_END() (":localhost CAP * ACK :END\r\n")
-#define NICKCHANGE_MSG(serverHostName, nickName) (":" + serverHostName + " 001 " + nickName + " :Name changed to " + nickName + "\r\n")
+#define NICKCHANGE_MSG(serverHostName, nickName, newNickName) (":" + nickName + "!" + nickName + " NICK :" + newNickName + "\r\n")
 #define WELCOME_SERVER(hostName, nickName, message, message2) (":" + hostName + " 001 " + nickName + " :" + message  + " " + nickName + " " + message2 + "\r\n")
 #define CANTJOIN(servername,client,channelname) (":" + servername + " 437 " + client)
 #define PONG_MSG(serverHostName) ("PONG " + serverHostName + "\r\n")
@@ -48,6 +48,8 @@ class CommandHandler{
         static bool isPasswordGood(std::string message, std::string password);
         static std::string getNameOfClients(std::map<std::string, Client> clients);
         static bool isRequest(std::string message);
+        static bool instanceExist(std::map<std::string, Client> clientsOnChannel, std::string nickName);
+        static std::string getAllChannelsNames(std::vector<Channel> channels);
 };
 
 // get channel by name

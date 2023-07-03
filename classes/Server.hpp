@@ -20,7 +20,6 @@
 #include <fcntl.h>
 #include "../includes/colors.hpp"
 #include "../classes/CommandHandler.hpp"
-
 class Server{
 	public :
 		// Constructors
@@ -38,8 +37,9 @@ class Server{
 		std::vector<Channel> &getChannels();
 		void printData();
 	private :
+ 	 static void signalHandler(int signal);
+		static bool running;
 		// Properties
-		// std::map<int, std::string> buffer;
 		unsigned int port;
 		std::string password;
 		int socketFd;

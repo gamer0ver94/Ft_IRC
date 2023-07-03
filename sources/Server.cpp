@@ -1,36 +1,51 @@
 #include "../classes/Server.hpp"
 #include <csignal>
 
+bool Server::running = false;
+
 Server::Server(unsigned int port, std::string password) :
     port(port), password(password), socketFd(0), hostName("IRCSERVER") {
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGQUIT, signalHandler);
     std::cout << "Server Constructor" << std::endl;
 }
 
 Server::~Server() {
+    while (!clients.empty()) {
+        std::map<int, Client*>::iterator it = clients.begin();
+        delete it->second;
+        clients.erase(it);
+    }
 }
 
 void Server::run() {
+    running = true;
     std::cout << Green << "Server Running ..." << Reset<< std::endl;
     createSocket();
 }
 
 void Server::createSocket() {
-    std::cout << Yellow << "Creating Server Socket" << Reset << std::endl;
-    socketFd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socketFd == -1) {
-        throw std::runtime_error("Failed to create socket.");
+    try{
+        std::cout << Yellow << "Creating Server Socket" << Reset << std::endl;
+        socketFd = socket(AF_INET, SOCK_STREAM, 0);
+        if (socketFd == -1) {
+            throw std::runtime_error("Failed to create socket.");
+        }
+        int reuseAddr = 1;
+        if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseAddr, sizeof(reuseAddr)) == -1) {
+            close(socketFd);
+            throw std::runtime_error("Failed to set SO_REUSEADDR option.");
+        }
+        //testing to see if changes
+        if (fcntl(socketFd, F_SETFL, O_NONBLOCK) == -1) {
+        std::cout << Red << "Error setting socket to non-blocking mode."<< Reset << std::endl;
+        }
+        bindSocket();
+        listening();
     }
-    int reuseAddr = 1;
-    if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseAddr, sizeof(reuseAddr)) == -1) {
-        close(socketFd);
-        throw std::runtime_error("Failed to set SO_REUSEADDR option.");
+    catch(std::exception &e){
     }
-    //testing to see if changes
-  if (fcntl(socketFd, F_SETFL, O_NONBLOCK) == -1) {
-    std::cout << Red << "Error setting socket to non-blocking mode."<< Reset << std::endl;
-}
-    bindSocket();
-    listening();
+
 }
 
 void Server::bindSocket() {
@@ -68,7 +83,7 @@ void Server::listening() {
     serverPollFd.events = POLLIN;
     serverPollFd.revents = 0;
     pollFds.push_back(serverPollFd);
-    while (true) {
+    while (running) {
         // Wait for activity on any of the monitored file descriptors
         int pollResult = poll(pollFds.data(), pollFds.size(), -1);
         if (pollResult == -1) {
@@ -79,7 +94,8 @@ void Server::listening() {
             if (pollFds[0].revents & (POLLIN)) {
                 int clientSocket = accept(socketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
                 if (clientSocket == -1) {
-                    throw std::runtime_error("Failed to accept a client connection.");
+                      std::cerr << "Error in poll system call. Continuing..." << std::endl;
+                    continue;
                 }
                 // Add the new client socket to the vector of pollfd structures
                 pollfd clientPollFd;
@@ -92,7 +108,8 @@ void Server::listening() {
         try{
             handleCommunication(pollFds);
         }
-        catch(...){}
+        catch(...){
+        }
     }
 }
 
@@ -136,7 +153,6 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
                     message += buffer;
                 }
             }
-
             handleClientMessage(message, pollFds[i].fd);
         }
     }
@@ -223,4 +239,12 @@ std::map<int, Client*> &Server::getClients()
 std::vector<Channel> &Server::getChannels()
 {
     return (this->channels);
+}
+
+void Server::signalHandler(int signal){
+    if (signal == SIGINT) {
+      std::cout << Green << "Thanks for using our Server!" << Reset << std::endl;
+      std::cout << Red << "Server Closed" << Reset << std::endl;
+      running = false;
+    }
 }
