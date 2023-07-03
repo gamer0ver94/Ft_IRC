@@ -36,7 +36,6 @@ void Bot::run() {
         } else {
             if (fds[0].revents & POLLIN) {
                 // Socket is ready for reading
-
                 bzero(buffer, sizeof(buffer));
                 int recvBytes = recv(socketFd, buffer, sizeof(buffer), 0);
                 if (recvBytes < 0) {
@@ -44,7 +43,6 @@ void Bot::run() {
                 } else {
                     std::cout << Green << "Message Received: " << Reset << buffer << std::endl;
                 }
-
                 std::string message(buffer);
                 handleMessage(message, response);
                 if (!response.empty()) {
@@ -139,6 +137,7 @@ void Bot::handleMessage(std::string& message, std::string& response) {
     std::string content;
 	std::string victoryMessage;
 	std::string updatedMessage;
+	double duration;
     if (message.find("PRIVMSG ") != std::string::npos){
         getMessageInfo(message, clientName, channelName, content);
     }
@@ -147,6 +146,14 @@ void Bot::handleMessage(std::string& message, std::string& response) {
         // std::string update = game[channelName]->update(message);
         std::string result;
 		updatedMessage = game[channelName]->update(message, clientName);
+		duration = static_cast<double>(clock() - game[channelName]->start) / CLOCKS_PER_SEC;
+		if (duration > 30){
+			std::cout << "TIME OUT" << std::endl;
+			extractTopicAndQuestion(updatedMessage, game[channelName]->currentTopic, game[channelName]->currentQuestion);
+        	result = CUSTUM_MESSAGE(channelName, "TIMEOUT");
+        	send(socketFd, result.c_str(), result.length(), 0);
+			return;
+		}
 		if (updatedMessage == "BADANSWER!#"){
 			result = CUSTUM_MESSAGE(channelName, "WRONG AWSER");
         	send(socketFd, result.c_str(), result.length(), 0);
@@ -156,15 +163,18 @@ void Bot::handleMessage(std::string& message, std::string& response) {
 				// Display the winner by calling a function that find the best
 				victoryMessage = CUSTUM_MESSAGE(channelName, whoWonGame(game[channelName]->getPlayers()) + " Won the game!");
         	    send(socketFd, victoryMessage.c_str(), victoryMessage.length(), 0);
-				// delete game[channelName];
+				game[channelName]->running = false;
+				std::map<std::string, Game*>::iterator it = game.find(channelName);
+				if (it != game.end()){
+					delete it->second;
+					game.erase(it);
+				}
 				return;
         	}
 			extractTopicAndQuestion(updatedMessage, game[channelName]->currentTopic, game[channelName]->currentQuestion);
         	result = "PRIVMSG " + channelName + " :" + game[channelName]->currentTopic + " => " + game[channelName]->currentQuestion + "\r\n";
         	send(socketFd, result.c_str(), result.length(), 0);
-        	
 		}
-
     }
     else{
         if (message.find("001 ") != std::string::npos && message.find("\r\n")) {

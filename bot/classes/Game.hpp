@@ -3,6 +3,7 @@
 #include <map>
 #include <fstream>
 #include <cstdlib>
+#include <ctime>
 
 class Game{
     public :
@@ -17,6 +18,7 @@ class Game{
         std::string currentQuestion;
         //getter
         int getNumberOfQuestions();
+		clock_t start;
 		std::map<std::string, int> getPlayers();
     private :
         std::string channelName;

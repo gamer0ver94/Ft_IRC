@@ -9,6 +9,7 @@ Game::~Game(){}
 
 std::string Game::run(){
     running = true;
+	start = clock();
     return getRandomQuestion();
 }
 
