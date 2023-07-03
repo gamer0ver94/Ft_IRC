@@ -17,7 +17,7 @@ void Game::addPlayer(std::string player){
     std::cout << player << " added" << std::endl;
 }
 
-std::string Game::update(std::string message) {
+std::string Game::update(std::string message, std::string clientName) {
     if (message.find("PRIVMSG ") != std::string::npos && message.find(":*") != std::string::npos && message.find("\r\n") != std::string::npos) {
         std::cout << "Current Topic: " << currentTopic << std::endl;
         std::cout << "Current Question: " << currentQuestion << std::endl;
@@ -27,11 +27,12 @@ std::string Game::update(std::string message) {
             std::cout << "Answer: " << answer << std::endl;
             if (message.find(":*" + answer) != std::string::npos) {
                 std::cout << "CORRECT ANSWER!" << std::endl;
-                ++players["gameover"]; // increment score for user who answered correctly
+                ++players[clientName]; // increment score for user who answered correctly
                 numberOfQuestions--;
                 return getRandomQuestion();
             } else {
                 std::cout << "WRONG ANSWER!" << std::endl;
+				return "BADANSWER!#";
             }
         } else {
             std::cout << "Invalid topic or question!" << std::endl;
@@ -40,6 +41,7 @@ std::string Game::update(std::string message) {
     std::string output = "Topic: " + currentTopic + "\n";
     output += "Question: " + currentQuestion + "\n";
     return output;
+	//return empty message
 }
 
 
@@ -139,4 +141,13 @@ std::string Game::caseToLower(const std::string& input) {
 
 int Game::getNumberOfQuestions(){
     return numberOfQuestions;
+}
+
+std::string Game::extractClientName(std::string message){
+	(void)message;
+	return NULL;
+}
+
+std::map<std::string, int> Game::getPlayers(){
+	return players;
 }

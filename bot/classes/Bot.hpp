@@ -24,7 +24,7 @@
 #include <arpa/inet.h>
 #include "../classes/Game.hpp"
 #define RULES(channelName) (std::string("PRIVMSG ") + std::string(channelName) + " Welcome, i am a bot.\nRules : to join type join game to start type start game\r\n")
-
+#define CUSTUM_MESSAGE(channelName, message) (std::string("PRIVMSG ") + std::string(channelName) + " " + message + "\r\n")
 class Game;
 
 class Bot{
@@ -52,4 +52,5 @@ class Bot{
         void getMessageInfo(std::string message, std::string &clientName, std::string &channelName, std::string &content);
         void startGame(std::string channelName);
         void extractTopicAndQuestion(const std::string& input, std::string& topic, std::string& question);
+		std::string whoWonGame(std::map<std::string, int> players);
 };

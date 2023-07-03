@@ -73,6 +73,8 @@
 		"__tree": "cpp",
 		"map": "cpp",
 		"fstream": "cpp",
-		"csignal": "cpp"
+		"csignal": "cpp",
+		"iomanip": "cpp",
+		"stack": "cpp"
 	}
 }

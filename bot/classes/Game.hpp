@@ -11,12 +11,13 @@ class Game{
         void addPlayer(std::string player);
         void remove();
         std::string run();
-        std::string update(std::string message);
+        std::string update(std::string message, std::string clientName);
         bool running;
         std::string currentTopic;
         std::string currentQuestion;
         //getter
         int getNumberOfQuestions();
+		std::map<std::string, int> getPlayers();
     private :
         std::string channelName;
         std::map<std::string, int> players;
@@ -27,4 +28,5 @@ class Game{
         std::string getRandomQuestion();
         void printQuestions();
         std::string caseToLower(const std::string& input);
+		std::string extractClientName(std::string message);
 };

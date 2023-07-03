@@ -137,18 +137,34 @@ void Bot::handleMessage(std::string& message, std::string& response) {
     std::string clientName;
     std::string channelName;
     std::string content;
+	std::string victoryMessage;
+	std::string updatedMessage;
     if (message.find("PRIVMSG ") != std::string::npos){
         getMessageInfo(message, clientName, channelName, content);
     }
+	std::cout << "The Client name is" << clientName << std::endl;
     if (game.find(channelName) != game.end() && game[channelName] != NULL && game[channelName]->running){
         // std::string update = game[channelName]->update(message);
         std::string result;
-        extractTopicAndQuestion(game[channelName]->update(message), game[channelName]->currentTopic, game[channelName]->currentQuestion);
-        result = "PRIVMSG " + channelName + " :" + game[channelName]->currentTopic + " => " + game[channelName]->currentQuestion + "\r\n";
-        send(socketFd, result.c_str(), result.length(), 0);
-        if (game[channelName]->getNumberOfQuestions() == 0){
-            send(socketFd, std::string("end\r\n").c_str(), 5, 0);
-        }
+		updatedMessage = game[channelName]->update(message, clientName);
+		if (updatedMessage == "BADANSWER!#"){
+			result = CUSTUM_MESSAGE(channelName, "WRONG AWSER");
+        	send(socketFd, result.c_str(), result.length(), 0);
+		}
+		else{
+			if (game[channelName]->getNumberOfQuestions() == 8){
+				// Display the winner by calling a function that find the best
+				victoryMessage = CUSTUM_MESSAGE(channelName, whoWonGame(game[channelName]->getPlayers()) + " Won the game!");
+        	    send(socketFd, victoryMessage.c_str(), victoryMessage.length(), 0);
+				// delete game[channelName];
+				return;
+        	}
+			extractTopicAndQuestion(updatedMessage, game[channelName]->currentTopic, game[channelName]->currentQuestion);
+        	result = "PRIVMSG " + channelName + " :" + game[channelName]->currentTopic + " => " + game[channelName]->currentQuestion + "\r\n";
+        	send(socketFd, result.c_str(), result.length(), 0);
+        	
+		}
+
     }
     else{
         if (message.find("001 ") != std::string::npos && message.find("\r\n")) {
@@ -272,3 +288,14 @@ void Bot::extractTopicAndQuestion(const std::string& input, std::string& topic, 
     }
 }
 
+std::string Bot::whoWonGame(std::map<std::string, int> players){
+	int score = 0;
+	std::string winner;
+	for (std::map<std::string, int>::iterator it = players.begin(); it != players.end(); it++){
+		if (it->second > score){
+			score = it->second;
+			winner = it ->first;
+		}
+	}
+	return winner;
+}
