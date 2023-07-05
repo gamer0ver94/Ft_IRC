@@ -166,7 +166,7 @@ void Bot::handleMessage(std::string& message, std::string& response) {
         	result = CUSTUM_MESSAGE(channelName, "<Too late <TIME OUT> for this question!");
             game[channelName]->decrementNumberOfQuestions();
         	send(socketFd, result.c_str(), result.length(), 0);
-            if (game[channelName]->getNumberOfQuestions() != 8){
+            if (game[channelName]->getNumberOfQuestions() <= 0){
                 game[channelName]->setStart(time(NULL));
                 std::string result;
                 extractTopicAndQuestion(game[channelName]->getRandomQuestion(), game[channelName]->getCurrentTopic(), game[channelName]->getCurrentQuestion());
@@ -175,12 +175,12 @@ void Bot::handleMessage(std::string& message, std::string& response) {
 			    return;
             }
 		}
-		if (game[channelName]->getNumberOfQuestions() != 8 && updatedMessage == "BADANSWER!#"){
+		if (game[channelName]->getNumberOfQuestions() <= 0 && updatedMessage == "BADANSWER!#"){
 			result = CUSTUM_MESSAGE(channelName, "<WRONG AWNSER>");
         	send(socketFd, result.c_str(), result.length(), 0);
 		}
 		else{
-			if (game[channelName]->getNumberOfQuestions() == 8){
+			if (game[channelName]->getNumberOfQuestions() <= 0){
 				// Display the winner by calling a function that find the best
                 std::string winner = whoWonGame(game[channelName]->getPlayers());
                 if (winner == "NO_WINNER"){
