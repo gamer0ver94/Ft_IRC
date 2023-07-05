@@ -16,6 +16,8 @@ class Channel{
 		bool tMode;
 		bool kMode;
 		bool oMode;
+		bool lMode;
+		unsigned int maxClients;
 		std::string password;
 		std::string topic;
 	public :
@@ -30,11 +32,15 @@ class Channel{
 		bool getTMode();
 		bool getKMode();
 		bool getOMode();
+		bool getLMode();
+		unsigned int getMaxClients();
 		std::string &getPassword();
 		std::string getTopic();
 		// Setters
 		void setIMode(bool state);
 		void setTMode(bool state);
+		void setLMode(bool state);
 		void setPassword(std::string newPassword);
 		void setTopic(std::string newTopic);
+		void setMaxClients(unsigned int max);
 };

@@ -50,6 +50,7 @@ class CommandHandler{
         static bool isRequest(std::string message);
         static bool instanceExist(std::map<std::string, Client> clientsOnChannel, std::string nickName);
         static std::string getAllChannelsNames(std::vector<Channel> channels);
+        static unsigned int extractMaxClients(std::string message);
+        static bool isValidMode(std::string mode);
 };
 
-// get channel by name

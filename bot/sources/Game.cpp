@@ -9,7 +9,7 @@ Game::~Game(){}
 
 std::string Game::run(){
     running = true;
-	start = clock();
+	start = time(NULL);
     return getRandomQuestion();
 }
 
@@ -39,10 +39,7 @@ std::string Game::update(std::string message, std::string clientName) {
             std::cout << "Invalid topic or question!" << std::endl;
         }
     }
-    std::string output = "Topic: " + currentTopic + "\n";
-    output += "Question: " + currentQuestion + "\n";
-    return output;
-	//return empty message
+	return "";
 }
 
 
@@ -82,19 +79,19 @@ void Game::readQuestions(const std::string& fileName) {
     file.close();
 }
 
-
-
-
-std::string Game::getRandomQuestion(){
+std::string Game::getRandomQuestion() {
     if (question.empty()) {
         return "No questions available.";
     }
 
-    // Step 1: Generate a random number within the range of the map's size
+    // Step 1: Seed the random number generator
+    std::srand(static_cast<unsigned>(std::time(0)));
+
+    // Step 2: Generate a random number within the range of the map's size
     std::map<std::string, std::map<std::string, std::string> >::const_iterator topicIterator = question.begin();
     std::advance(topicIterator, std::rand() % question.size());
 
-    // Step 2: Get the random topic
+    // Steps 3 and 4: Get the random topic and question
     std::string randomTopic = topicIterator->first;
     const std::map<std::string, std::string>& submap = topicIterator->second;
 
@@ -102,19 +99,20 @@ std::string Game::getRandomQuestion(){
         return "No questions available for the selected topic.";
     }
 
-    // Step 3: Generate a random number within the range of the submap's size
+    // Generate a random number within the range of the submap's size
     std::map<std::string, std::string>::const_iterator questionIterator = submap.begin();
     std::advance(questionIterator, std::rand() % submap.size());
 
-    // Step 4: Get the random question and answer
+    // Step 5: Get the random question and answer
     std::string randomQuestion = questionIterator->first;
     std::string randomAnswer = questionIterator->second;
 
-    // Step 5: Return the random question and answer
+    // Step 6: Return the random question and answer
     std::string output = "Topic: " + randomTopic + "\n";
     output += "Question: " + randomQuestion + "\n";
     return output;
 }
+
 
 void Game::printQuestions() {
     std::map<std::string, std::map<std::string, std::string> >::iterator topicIt;
@@ -151,4 +149,31 @@ std::string Game::extractClientName(std::string message){
 
 std::map<std::string, int> Game::getPlayers(){
 	return players;
+}
+
+void Game::decrementNumberOfQuestions(){
+    numberOfQuestions--;
+}
+
+bool Game::getRunning(){
+    return running;
+}
+
+void Game::setRunning(bool state){
+    this->running = state;
+}
+
+std::string& Game::getCurrentTopic(){
+    return currentTopic;
+}
+std::string& Game::getCurrentQuestion(){
+    return currentQuestion;
+}
+
+void Game::setStart(time_t time){
+    this->start = time;
+}
+
+time_t Game::getStart(){
+    return start;
 }

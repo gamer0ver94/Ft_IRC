@@ -13,21 +13,30 @@ class Game{
         void remove();
         std::string run();
         std::string update(std::string message, std::string clientName);
-        bool running;
-        std::string currentTopic;
-        std::string currentQuestion;
         //getter
         int getNumberOfQuestions();
-		clock_t start;
+        void decrementNumberOfQuestions();
+        std::string getRandomQuestion();
+        //getter
 		std::map<std::string, int> getPlayers();
+        bool getRunning();
+        std::string& getCurrentTopic();
+        std::string& getCurrentQuestion();
+        time_t getStart();
+        //setter
+        void setRunning(bool state);
+        void setStart(time_t time);
     private :
-        std::string channelName;
         std::map<std::string, int> players;
+		time_t start;
+        std::string currentTopic;
+        std::string currentQuestion;
+        bool running;
+        std::string channelName;
         //A map that as key as topic and another map as value that coint question and awser;
         std::map<std::string, std::map<std::string, std::string> > question;
         int numberOfQuestions;
         void readQuestions(const std::string& fileName);
-        std::string getRandomQuestion();
         void printQuestions();
         std::string caseToLower(const std::string& input);
 		std::string extractClientName(std::string message);

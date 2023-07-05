@@ -25,8 +25,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 	std::vector<int> op;
     switch (messageType){
         case 0 :    //CommandCAP
-            //  response = handleCapabilityNegotiation(message);
-            //  sendExtraMessage(clientFd, response);
             parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password);
             if (password.empty() || server.getPassword() != password){
                 response = ERROR_BADPASSWORD();
@@ -111,7 +109,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 else if (mode == "+o"){
                     extractNewOp(message, nickName, channelName);
                     getChannelByName(server.getChannels(), channelName).getOpClientFd().push_back(getClientByName(server.getClients(), nickName).getSocketFd());
-                    response = ":" + server.getClients()[clientFd]->getNickName() + " MODE " + channelName + " +o " + nickName + "\n";
+                    response = ":" + server.getHostName() + " MODE " + channelName + " +o " + nickName + "\n";
                     sendExtraMessage(getClientByName(server.getClients(), nickName).getSocketFd(), NOTICE_MSG(server.getHostName(), channelName, "You are now op"));
                     break;
                 }
@@ -120,11 +118,24 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                     removeElementByFd(getChannelByName(server.getChannels(), channelName).getOpClientFd(), getClientByName(server.getClients(), nickName).getSocketFd());
                     sendExtraMessage(getClientByName(server.getClients(), nickName).getSocketFd(), NOTICE_MSG(server.getHostName(), channelName, "You are no longer op"));
                 }
+                else if (mode == "-l"){
+                    getChannelByName(server.getChannels(), channelName).setMaxClients(200);
+                    getChannelByName(server.getChannels(), channelName).setLMode(false);
+                }
+                else if (mode == "+l"){
+                    getChannelByName(server.getChannels(), channelName).setMaxClients(extractMaxClients(message));
+                    getChannelByName(server.getChannels(), channelName).setLMode(true);
+                }
                 else if (mode == "MODE_REQUEST"){
                     response = ":" + server.getHostName() + " 324 " + server.getClients()[clientFd]->getNickName() + " "  + channelName + " +\r\n";
                     break;
                 }
-                response = MODE_MEG(server.getHostName(), channelName, mode);
+                if (isValidMode(mode)){
+                    response = MODE_MEG(server.getHostName(), channelName, mode);
+                }
+                else{
+                    response = "UNKNOWN";
+                }
             }
             catch(...){
                 response = ":" + server.getHostName() + " 502 " + server.getClients()[clientFd]->getNickName() + " :You are now online as " + server.getClients()[clientFd]->getNickName() + "\r\n";
@@ -151,6 +162,11 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             ((getChannelByName(server.getChannels(), channelName).getIMode() == true) && (getChannelByName(server.getChannels(), channelName).getPassword().empty()) && (isInvitedToChannel(getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel(), clientFd))) || 
             (((getChannelByName(server.getChannels(), channelName).getIMode() == false) && (!getChannelByName(server.getChannels(), channelName).getPassword().empty())) && (isPasswordGood(message, getChannelByName(server.getChannels(), channelName).getPassword()))) || 
             ((getChannelByName(server.getChannels(), channelName).getIMode() == true) && (!getChannelByName(server.getChannels(), channelName).getPassword().empty()) && (isPasswordGood(message, getChannelByName(server.getChannels(), channelName).getPassword())) && (isInvitedToChannel(getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel(), clientFd)))) {
+                if (getChannelByName(server.getChannels(), channelName).getLMode() == true && 
+                getChannelByName(server.getChannels(), channelName).getInvitedClients().size() >= getChannelByName(server.getChannels(), channelName).getMaxClients()){
+                    response = ":" + server.getHostName() + " 471 " + nickName + " " + channelName + " :(+l) - max clients reached\r\n";
+                    return;
+                }
                 for(it = server.getChannels().begin(); it != server.getChannels().end();++it){
 	    	    	if ((*it).getChannelName() == channelName){
                         //does instance already exist in channel
@@ -276,8 +292,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
         case 11 :
             response = ":QUIT :leaving\r\n";
             try {
-                deleteClientFromAllChannels(server.getChannels(),clientFd, server.getClients()[clientFd]->getNickName());
-                std::cout << "Deleted" << std::endl;
+                if (server.getClients()[clientFd]){
+                    deleteClientFromAllChannels(server.getChannels(),clientFd, server.getClients()[clientFd]->getNickName());
+                    std::cout << "Deleted" << std::endl;
+                }
             }
             catch(std::exception &e){
                 std::cout << e.what() << std::endl;
@@ -290,6 +308,12 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             for (it = server.getChannels().begin();it != server.getChannels().end(); ++it){
                 if ((*it).getChannelName() == channelName){
 					if (isOperator((*it).getOpClientFd() , clientFd)){
+                        if (isOperator(getChannelByName(server.getChannels(),channelName).getOpClientFd(), getClientByName(server.getClients(), nickName).getSocketFd())){
+                            response = NOTICE_MSG(server.getHostName(), channelName, "The client you try to kick is Op");
+                            sendExtraMessage(clientFd, response);
+                            response.clear();
+                            break;
+                        }
                         try {
                             getClientByName(server.getClients(),nickName);
                         }
@@ -331,11 +355,11 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 if (getChannelByName(server.getChannels(),channelName).getIMode() == true){
                     getChannelByName(server.getChannels(),channelName).getInvitedClientsToChannel().push_back(getClientByName(server.getClients(),extractInvitedClient(message)).getSocketFd());
                     getChannelByName(server.getChannels(), channelName).getInvitedClientsToChannel().push_back(getClientByName(server.getClients(), nickName).getSocketFd());
-                    response = ":" + server.getHostName() + " 341 " + server.getClients()[clientFd]->getNickName() + " " + channelName + " :Inviting you to <channel>\r\n";
+                    response = ":" + server.getHostName() + " 341 " + server.getClients()[clientFd]->getNickName() + " " + channelName + " :Inviting " + nickName + " to " + channelName + "\r\n";
                     sendExtraMessage(getClientByName(server.getClients(), nickName).getSocketFd(), NOTICE_MSG(server.getHostName(), nickName, "You have been Invited to join Channel " + channelName));
                 }
                 else{
-                    response = ":NOTICE " + channelName + " :Error 518: You need to set mode +i to invite someone to the channel";
+                    response = "NOTICE " + channelName + " :You need to set mode +i to invite someone to the channel\r\n";
                 }
             }
             catch(std::exception &e){
@@ -346,7 +370,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
         case 14 : // Command Topic
             try{
                 parseChannelName(message, channelName);
-                if (isOperator(getChannelByName(server.getChannels(), channelName).getOpClientFd(), clientFd)){
+                if (isOperator(getChannelByName(server.getChannels(), channelName).getOpClientFd(), clientFd) || getChannelByName(server.getChannels(), channelName).getTMode() == false){
                     getChannelByName(server.getChannels(), channelName).setTopic(extractTopic(message));
                     response = ":" + server.getHostName() + " 332 " + server.getClients()[clientFd]->getNickName() + " " + channelName + getChannelByName(server.getChannels(), channelName).getTopic() + "\r\n";
                     messageAllChannelClients(getChannelByName(server.getChannels(), channelName), clientFd, response);
@@ -815,4 +839,30 @@ std::string CommandHandler::getAllChannelsNames(std::vector<Channel> channels){
     }
     response += "\r\n";
     return response;
+}
+
+unsigned int CommandHandler::extractMaxClients(std::string message){
+    std::istringstream iss(message);
+    std::string word;
+    std::vector<std::string> words;
+    std::string topic;
+    while (iss >> word) {
+        words.push_back(word);
+    }
+    for (size_t i = 0; i < words.size(); i++){
+        if (words[i] == "MODE"){
+            return static_cast<unsigned int>(atoi(words[i + 3].c_str()));
+        }
+    }
+    return 200;
+}
+
+bool CommandHandler::isValidMode(std::string mode){
+    std::string validModes[] = {"+i", "-i", "+t", "-t", "+k", "-k", "+o", "-o", "+l", "-l"};
+    for (int i = 0; i < 10; i++){
+        if(validModes[i] == mode){
+            return true;
+        }
+    }
+    return false;
 }

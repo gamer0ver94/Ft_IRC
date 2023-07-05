@@ -6,6 +6,7 @@ Bot::Bot(std::string botName, std::string serverIp, int port, std::string passwo
     botName(botName), serverIp(serverIp), port(port), password(password) {
     std::signal(SIGINT, signalHandler);
     std::signal(SIGQUIT, signalHandler);
+    startingCount = 0;
     std::cout << "Bot Created" << std::endl;
 }
 
@@ -24,6 +25,8 @@ void Bot::run() {
     struct pollfd fds[1];
     fds[0].fd = socketFd;
     fds[0].events = POLLIN;
+    startingCount = time(NULL);
+    time_t lastActivityTime = startingCount;  // Initialize with the starting time
 
     while (running) {
         int pollResult = poll(fds, 1, 5000);  // 5-second timeout
@@ -32,6 +35,18 @@ void Bot::run() {
             throw std::runtime_error("Failed to poll.");
         } else if (pollResult == 0) {
             // Timeout occurred, handle it as needed
+            time_t currentTime = time(NULL);
+            if (currentTime - lastActivityTime >= 60) {
+                // No activity for 30 seconds, send a message to the server
+                std::string idleMessage = "LIST -YES\r\n";;
+                ssize_t bytesSent = send(socketFd, idleMessage.c_str(), idleMessage.length(), 0);
+                if (bytesSent == -1) {
+                    throw std::runtime_error("Failed to send idle message.");
+                } else {
+                    std::cout << Yellow << "Bot sent idle message." << Reset << std::endl;
+                }
+                lastActivityTime = currentTime;  // Update the last activity time
+            }
             continue;
         } else {
             if (fds[0].revents & POLLIN) {
@@ -54,12 +69,13 @@ void Bot::run() {
                     }
                 }
                 response.clear();
+                lastActivityTime = time(NULL);  // Update the last activity time
             }
         }
     }
-
     send(socketFd, quit.c_str(), quit.length(), 0);
 }
+
 
 void Bot::connectToServer() {
     createSocket();
@@ -70,7 +86,6 @@ void Bot::connectToServer() {
     int connectResult = connect(socketFd, (sockaddr*)&socketAddr, sizeof(socketAddr));
     if (connectResult == -1 && errno == EINPROGRESS) {
         // Connection in progress
-
         struct pollfd fds[1];
         fds[0].fd = socketFd;
         fds[0].events = POLLOUT;
@@ -85,7 +100,6 @@ void Bot::connectToServer() {
         } else {
             if (fds[0].revents & POLLOUT) {
                 // Socket is ready for writing, check if the connection was successful
-
                 int error;
                 socklen_t len = sizeof(error);
                 if (getsockopt(socketFd, SOL_SOCKET, SO_ERROR, &error, &len) == -1 || error != 0) {
@@ -121,7 +135,7 @@ void Bot::createSocket() {
 }
 
 void Bot::authenticate() {
-    std::string auth = "CAP LS\nPASS 123\nNICK BOT\nUSER BOT BOT BOT BOT\r\n";
+    std::string auth = "CAP LS\nPASS " + password + "\nNICK " + botName + "\nUSER " + botName + " " + botName + " " + botName + " " + botName + "\r\n";
     ssize_t bytesSent = send(socketFd, auth.c_str(), auth.length(), 0);
 
     if (bytesSent == -1) {
@@ -137,33 +151,49 @@ void Bot::handleMessage(std::string& message, std::string& response) {
     std::string content;
 	std::string victoryMessage;
 	std::string updatedMessage;
-	double duration;
+    std::string msg;
     if (message.find("PRIVMSG ") != std::string::npos){
         getMessageInfo(message, clientName, channelName, content);
     }
-	std::cout << "The Client name is" << clientName << std::endl;
-    if (game.find(channelName) != game.end() && game[channelName] != NULL && game[channelName]->running){
-        // std::string update = game[channelName]->update(message);
+    if (game.find(channelName) != game.end() && game[channelName] != NULL && game[channelName]->getRunning() && isPlaying(clientName, game[channelName]->getPlayers())){
+    time_t currentTime = time(NULL);
+	double duration = difftime(currentTime, game[channelName]->getStart());
         std::string result;
+        std::cout << game[channelName]->getNumberOfQuestions() << std::endl;
 		updatedMessage = game[channelName]->update(message, clientName);
-		duration = static_cast<double>(clock() - game[channelName]->start) / CLOCKS_PER_SEC;
 		if (duration > 30){
-			std::cout << "TIME OUT" << std::endl;
-			extractTopicAndQuestion(updatedMessage, game[channelName]->currentTopic, game[channelName]->currentQuestion);
-        	result = CUSTUM_MESSAGE(channelName, "TIMEOUT");
+			extractTopicAndQuestion(updatedMessage, game[channelName]->getCurrentTopic(), game[channelName]->getCurrentQuestion());
+        	result = CUSTUM_MESSAGE(channelName, "<Too late <TIME OUT> for this question!");
+            game[channelName]->decrementNumberOfQuestions();
         	send(socketFd, result.c_str(), result.length(), 0);
-			return;
+            if (game[channelName]->getNumberOfQuestions() != 8){
+                game[channelName]->setStart(time(NULL));
+                std::string result;
+                extractTopicAndQuestion(game[channelName]->getRandomQuestion(), game[channelName]->getCurrentTopic(), game[channelName]->getCurrentQuestion());
+                result = "PRIVMSG " + channelName + " :" + game[channelName]->getCurrentTopic() + " => " + game[channelName]->getCurrentQuestion() + "\r\n";
+                send(socketFd, result.c_str(), result.length(), 0);
+			    return;
+            }
 		}
-		if (updatedMessage == "BADANSWER!#"){
-			result = CUSTUM_MESSAGE(channelName, "WRONG AWSER");
+		if (game[channelName]->getNumberOfQuestions() != 8 && updatedMessage == "BADANSWER!#"){
+			result = CUSTUM_MESSAGE(channelName, "<WRONG AWNSER>");
         	send(socketFd, result.c_str(), result.length(), 0);
 		}
 		else{
 			if (game[channelName]->getNumberOfQuestions() == 8){
 				// Display the winner by calling a function that find the best
-				victoryMessage = CUSTUM_MESSAGE(channelName, whoWonGame(game[channelName]->getPlayers()) + " Won the game!");
+                std::string winner = whoWonGame(game[channelName]->getPlayers());
+                if (winner == "NO_WINNER"){
+				    victoryMessage = CUSTUM_MESSAGE(channelName, "There is no winner you <all == NULL>!");
+                }
+                else if (winner == "DRAW"){
+                    victoryMessage = CUSTUM_MESSAGE(channelName, "There is a draw and i wont tell names ...!");
+                }
+                else{
+                    victoryMessage = CUSTUM_MESSAGE(channelName, winner) + " Won the game!";
+                }
         	    send(socketFd, victoryMessage.c_str(), victoryMessage.length(), 0);
-				game[channelName]->running = false;
+				game[channelName]->setRunning(false);
 				std::map<std::string, Game*>::iterator it = game.find(channelName);
 				if (it != game.end()){
 					delete it->second;
@@ -171,8 +201,8 @@ void Bot::handleMessage(std::string& message, std::string& response) {
 				}
 				return;
         	}
-			extractTopicAndQuestion(updatedMessage, game[channelName]->currentTopic, game[channelName]->currentQuestion);
-        	result = "PRIVMSG " + channelName + " :" + game[channelName]->currentTopic + " => " + game[channelName]->currentQuestion + "\r\n";
+			extractTopicAndQuestion(updatedMessage, game[channelName]->getCurrentTopic(), game[channelName]->getCurrentQuestion());
+        	result = "PRIVMSG " + channelName + " :" + game[channelName]->getCurrentTopic() + " => " + game[channelName]->getCurrentQuestion() + "\r\n";
         	send(socketFd, result.c_str(), result.length(), 0);
 		}
     }
@@ -181,17 +211,27 @@ void Bot::handleMessage(std::string& message, std::string& response) {
             response = "LIST -YES\r\n";
         } else if (message.find("LIST:") != std::string::npos && message.find("\r\n") != std::string::npos) {
             joinEveryChannel(message);
-            std::string rules = RULES("#a");
-            send(socketFd, rules.c_str(), rules.length(), 0);
         }
         else if (message.find("PRIVMSG ") != std::string::npos && message.find("play") != std::string::npos && message.find("\r\n") != std::string::npos){
-            createGame(channelName, clientName);
+            if (createGame(channelName, clientName)){
+                msg = CUSTUM_MESSAGE(channelName, "Game Created, you are now able to join the game before starts");
+                send(socketFd, msg.c_str(), msg.length(), 0);
+            }
         }
          else if (message.find("PRIVMSG ") != std::string::npos && message.find("join") != std::string::npos && message.find("\r\n") != std::string::npos){
-            joinPlayer(channelName, clientName);
+            if (joinPlayer(channelName, clientName)){
+                msg = CUSTUM_MESSAGE(channelName, clientName + " has joined succefully the game");
+                send(socketFd, msg.c_str(), msg.length(), 0);
+            }
         }
         else if (message.find("PRIVMSG ") != std::string::npos && message.find("start") != std::string::npos && message.find("\r\n") != std::string::npos){
-            startGame(channelName);
+            if (!game[channelName]->getPlayers().empty()){
+                startGame(channelName);
+            }
+            else{
+                msg = CUSTUM_MESSAGE(channelName, clientName + " You cant start the game without players <at least one>");
+                send(socketFd, msg.c_str(), msg.length(), 0);
+            }
         }
     }
     message.clear();
@@ -203,13 +243,19 @@ void Bot::joinEveryChannel(std::string message) {
     std::vector<std::string> channels;
     std::string topic;
     std::string request;
+    std::string rulesForGame = "Hi, I am " + botName + ", i was created to entretain channel by playing quiz games.Here are some rules <Write play to create a game>  <Write join if you want to participate in the game>  <Write start when all member are ready to start the Quiz>  <To aweser the questions you need to type * followed by the aweser>";
     while (iss >> channelName) {
         channels.push_back(channelName);
     }
     for (size_t i = 1; i < channels.size(); i++) {
-        request = "JOIN " + channels[i] + "\r\n";
-        send(socketFd, request.c_str(), request.length(), 0);
-        sleep(3);
+        if (!game[channels[i]]){
+            request = "JOIN " + channels[i] + "\r\n";
+            send(socketFd, request.c_str(), request.length(), 0);
+            sleep(1);
+            std::string rules = CUSTUM_MESSAGE(channels[i], rulesForGame);
+            send(socketFd, rules.c_str(), rules.length(), 0);
+            sleep(1);
+        }
     }
 }
 
@@ -234,46 +280,63 @@ void Bot::getMessageInfo(std::string message, std::string &clientName, std::stri
     content = words[3];
 }
 
-void Bot::createGame(std::string channelName, std::string clientName) {
+bool Bot::createGame(std::string channelName, std::string clientName) {
     (void)clientName;
+    std::string response;
     if (game.find(channelName) != game.end() && game[channelName] != NULL) {
-        if (game[channelName]->running){
+        if (game[channelName]->getRunning()){
             std::cout << Red << "Game already began" << Reset << std::endl;
+            response = "PRIVMSG " + channelName + " :The game have already started, wait till it finish so you can create another one!\r\n";
+            send(socketFd, response.c_str(), response.length(), 0);
+            return false;
         }
         else{
             std::cout << "Game already exists" << std::endl;
+            response = "PRIVMSG " + channelName + " :The game was already created, type <join> to be able to play!\r\n";
+            send(socketFd, response.c_str(), response.length(), 0);
+            return false;
         }
     } else {
         game[channelName] = new Game("game.txt", channelName);
     }
+    return true;
 }
 
 
-void Bot::joinPlayer(std::string channelName, std::string clientName){
+bool Bot::joinPlayer(std::string channelName, std::string clientName){
+    std::string response;
     if (game.find(channelName) != game.end() && game[channelName] != NULL) {
-        if (game[channelName]->running){
+        if (game[channelName]->getRunning()){
             std::cout << Red << "Game already began" << Reset << std::endl;
+            response = "PRIVMSG " + channelName + " :You are already late to <join> the game that already began!\r\n";
+            send(socketFd, response.c_str(), response.length(), 0);
+            return false;
         }
         else{
             game[channelName]->addPlayer(clientName);
+            return true;
         }
     }
     else {
         std::cout << "cant join the game that is not created" << std::endl;
+        response = "PRIVMSG " + channelName + " :You cant <join> a game that was not created yet!\r\n";
+        send(socketFd, response.c_str(), response.length(), 0);
     }
+    return false;
 }
 
 void Bot::startGame(std::string channelName){
+    std::string result;
     if (game.find(channelName) != game.end() && game[channelName] != NULL)
     {
-        std::string result;
-        extractTopicAndQuestion(game[channelName]->run(), game[channelName]->currentTopic, game[channelName]->currentQuestion);
-        result = "PRIVMSG " + channelName + " :" + game[channelName]->currentTopic + " => " + game[channelName]->currentQuestion + "\r\n";
-        send(socketFd, result.c_str(), result.length(), 0);
+        extractTopicAndQuestion(game[channelName]->run(), game[channelName]->getCurrentTopic(), game[channelName]->getCurrentQuestion());
+        result = "PRIVMSG " + channelName + " :" + game[channelName]->getCurrentTopic() + " => " + game[channelName]->getCurrentQuestion() + "\r\n";
     }
     else{
+        result = "PRIVMSG " + channelName + " :You cant start a game that was not yet created\r\n";
         std::cout<<Red<<"The game doesnot exist"<<Reset<<std::endl;
     }
+    send(socketFd, result.c_str(), result.length(), 0);
 }
 
 void Bot::extractTopicAndQuestion(const std::string& input, std::string& topic, std::string& question) {
@@ -299,7 +362,7 @@ void Bot::extractTopicAndQuestion(const std::string& input, std::string& topic, 
 }
 
 std::string Bot::whoWonGame(std::map<std::string, int> players){
-	int score = 0;
+	int score = -1;
 	std::string winner;
 	for (std::map<std::string, int>::iterator it = players.begin(); it != players.end(); it++){
 		if (it->second > score){
@@ -307,5 +370,32 @@ std::string Bot::whoWonGame(std::map<std::string, int> players){
 			winner = it ->first;
 		}
 	}
+    if (players[winner] == 0){
+        return "NO_WINNER";
+    }
+    for (std::map<std::string, int>::iterator it = players.begin(); it != players.end(); it++){
+		if (it->first != winner){
+            if (it->second == players[winner]){
+                return "DRAW";
+            }
+		}
+	}
 	return winner;
+}
+
+bool Bot::isPlaying(std::string clientName, std::map<std::string, int> players){
+    for (std::map<std::string, int>::iterator it = players.begin(); it != players.end(); ++it){
+        if (it->first == clientName){
+            return true;
+        }
+    }
+    return false;
+}
+
+time_t Bot::staringCount(){
+    return this->startingCount;
+}
+
+void Bot::setStartingCount(time_t time){
+    startingCount = time;
 }
