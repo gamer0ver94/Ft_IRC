@@ -163,10 +163,10 @@ void Bot::handleMessage(std::string& message, std::string& response) {
 		updatedMessage = game[channelName]->update(message, clientName);
 		if (duration > 30){
 			extractTopicAndQuestion(updatedMessage, game[channelName]->getCurrentTopic(), game[channelName]->getCurrentQuestion());
-        	result = CUSTUM_MESSAGE(channelName, "<Too late <TIME OUT> for this question!");
+        	result = CUSTUM_MESSAGE(channelName, "<Too late <TIME OUT> for this question! Good anwser =>" + game[channelName]->getAnwser());
             game[channelName]->decrementNumberOfQuestions();
         	send(socketFd, result.c_str(), result.length(), 0);
-            if (game[channelName]->getNumberOfQuestions() <= 0){
+            if (game[channelName]->getNumberOfQuestions() > 0){
                 game[channelName]->setStart(time(NULL));
                 std::string result;
                 extractTopicAndQuestion(game[channelName]->getRandomQuestion(), game[channelName]->getCurrentTopic(), game[channelName]->getCurrentQuestion());
@@ -175,7 +175,7 @@ void Bot::handleMessage(std::string& message, std::string& response) {
 			    return;
             }
 		}
-		if (game[channelName]->getNumberOfQuestions() <= 0 && updatedMessage == "BADANSWER!#"){
+		else if (updatedMessage == "BADANSWER!#"){
 			result = CUSTUM_MESSAGE(channelName, "<WRONG AWNSER>");
         	send(socketFd, result.c_str(), result.length(), 0);
 		}
@@ -399,3 +399,4 @@ time_t Bot::staringCount(){
 void Bot::setStartingCount(time_t time){
     startingCount = time;
 }
+

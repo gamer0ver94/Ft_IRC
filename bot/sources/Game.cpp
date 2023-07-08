@@ -83,31 +83,19 @@ std::string Game::getRandomQuestion() {
     if (question.empty()) {
         return "No questions available.";
     }
-
-    // Step 1: Seed the random number generator
     std::srand(static_cast<unsigned>(std::time(0)));
-
-    // Step 2: Generate a random number within the range of the map's size
     std::map<std::string, std::map<std::string, std::string> >::const_iterator topicIterator = question.begin();
     std::advance(topicIterator, std::rand() % question.size());
-
-    // Steps 3 and 4: Get the random topic and question
     std::string randomTopic = topicIterator->first;
     const std::map<std::string, std::string>& submap = topicIterator->second;
 
     if (submap.empty()) {
         return "No questions available for the selected topic.";
     }
-
-    // Generate a random number within the range of the submap's size
     std::map<std::string, std::string>::const_iterator questionIterator = submap.begin();
     std::advance(questionIterator, std::rand() % submap.size());
-
-    // Step 5: Get the random question and answer
     std::string randomQuestion = questionIterator->first;
     std::string randomAnswer = questionIterator->second;
-
-    // Step 6: Return the random question and answer
     std::string output = "Topic: " + randomTopic + "\n";
     output += "Question: " + randomQuestion + "\n";
     return output;
@@ -176,4 +164,8 @@ void Game::setStart(time_t time){
 
 time_t Game::getStart(){
     return start;
+}
+
+std::string Game::getAnwser(){
+    return question[currentTopic][currentQuestion];
 }

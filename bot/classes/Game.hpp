@@ -23,6 +23,7 @@ class Game{
         std::string& getCurrentTopic();
         std::string& getCurrentQuestion();
         time_t getStart();
+        std::string getAnwser();
         //setter
         void setRunning(bool state);
         void setStart(time_t time);
