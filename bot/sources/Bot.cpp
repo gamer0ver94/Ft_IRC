@@ -53,6 +53,7 @@ void Bot::run() {
                 // Socket is ready for reading
                 bzero(buffer, sizeof(buffer));
                 int recvBytes = recv(socketFd, buffer, sizeof(buffer), 0);
+				std::cout << "HHHELLLLLLO" << std::endl;
                 if (recvBytes < 0) {
                     throw std::runtime_error("Failed to receive data from client.");
                 } else {
@@ -175,7 +176,7 @@ void Bot::handleMessage(std::string& message, std::string& response) {
 			    return;
             }
 		}
-		else if (updatedMessage == "BADANSWER!#"){
+		if (updatedMessage == "BADANSWER!#" && game[channelName]->getNumberOfQuestions() > 0){
 			result = CUSTUM_MESSAGE(channelName, "<WRONG AWNSER>");
         	send(socketFd, result.c_str(), result.length(), 0);
 		}
@@ -190,7 +191,7 @@ void Bot::handleMessage(std::string& message, std::string& response) {
                     victoryMessage = CUSTUM_MESSAGE(channelName, "There is a draw and i wont tell names ...!");
                 }
                 else{
-                    victoryMessage = CUSTUM_MESSAGE(channelName, winner) + " Won the game!";
+                    victoryMessage = CUSTUM_MESSAGE(channelName, winner + " Won the game!");
                 }
         	    send(socketFd, victoryMessage.c_str(), victoryMessage.length(), 0);
 				game[channelName]->setRunning(false);
@@ -212,19 +213,19 @@ void Bot::handleMessage(std::string& message, std::string& response) {
         } else if (message.find("LIST:") != std::string::npos && message.find("\r\n") != std::string::npos) {
             joinEveryChannel(message);
         }
-        else if (message.find("PRIVMSG ") != std::string::npos && message.find("play") != std::string::npos && message.find("\r\n") != std::string::npos){
+        else if (message.find("PRIVMSG ") != std::string::npos && message.find("\\play") != std::string::npos && message.find("\r\n") != std::string::npos){
             if (createGame(channelName, clientName)){
                 msg = CUSTUM_MESSAGE(channelName, "Game Created, you are now able to join the game before starts");
                 send(socketFd, msg.c_str(), msg.length(), 0);
             }
         }
-         else if (message.find("PRIVMSG ") != std::string::npos && message.find("join") != std::string::npos && message.find("\r\n") != std::string::npos){
+         else if (message.find("PRIVMSG ") != std::string::npos && message.find("\\join") != std::string::npos && message.find("\r\n") != std::string::npos){
             if (joinPlayer(channelName, clientName)){
                 msg = CUSTUM_MESSAGE(channelName, clientName + " has joined succefully the game");
                 send(socketFd, msg.c_str(), msg.length(), 0);
             }
         }
-        else if (message.find("PRIVMSG ") != std::string::npos && message.find("start") != std::string::npos && message.find("\r\n") != std::string::npos){
+        else if (message.find("PRIVMSG ") != std::string::npos && message.find("\\start") != std::string::npos && message.find("\r\n") != std::string::npos){
             if (!game[channelName]->getPlayers().empty()){
                 startGame(channelName);
             }
