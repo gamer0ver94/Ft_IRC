@@ -53,7 +53,6 @@ void Bot::run() {
                 // Socket is ready for reading
                 bzero(buffer, sizeof(buffer));
                 int recvBytes = recv(socketFd, buffer, sizeof(buffer), 0);
-				std::cout << "HHHELLLLLLO" << std::endl;
                 if (recvBytes < 0) {
                     throw std::runtime_error("Failed to receive data from client.");
                 } else {

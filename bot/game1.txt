@@ -1,0 +1,171 @@
+Here's the modified text with the period (.) removed from the end of each answer:
+
+<Topic: Sport>
+Question: Who won the FIFA World Cup in 2018?
+Answer: France
+Question: Who won the NBA Finals in 2021?
+Answer: Bucks
+Question: Who is the all-time leading scorer in NBA history?
+Answer: Abdul-Jabbar
+Question: Which country has won the most Olympic gold medals?
+Answer: U.S.A
+Question: Who holds the record for the fastest 100-meter sprint?
+Answer: Bolt
+Question: Which sport uses a shuttlecock?
+Answer: Badminton
+Question: Who is the most decorated Olympian of all time?
+Answer: Phelps
+Question: What is the most popular sport in India?
+Answer: Cricket
+Question: Which country is famous for producing top tennis players like Roger Federer and Martina Hingis?
+Answer: Switzerland
+Question: What is the national sport of Japan?
+Answer: Sumo wrestling
+Question: Who holds the record for the most home runs in a single MLB season?
+Answer: Maris
+Question: Which country won the first ever FIFA World Cup in 1930?
+Answer: Uruguay
+Question: What is the oldest tennis tournament in the world?
+Answer: Wimbledon
+Question: Which sport is played at the Super Bowl?
+Answer: American football
+Question: Who is the most decorated female gymnast in Olympic history?
+Answer: Biles
+Question: Which country won the most gold medals in the 2020 Tokyo Olympics?
+Answer: China
+Question: Who holds the record for the most goals scored in a single season in European club football?
+Answer: Messi
+Question: Which country hosted the 2014 FIFA World Cup?
+Answer: Brazil
+Question: Who won the UEFA European Championship in 2021?
+Answer: Italy
+Question: Which country is known for producing great tennis players like Bjorn Borg and Stefan Edberg?
+Answer: Sweden
+
+<Topic: History>
+Question: Who was the first President of the United States?
+Answer: Washington
+Question: In which year did World War II end?
+Answer: 1945
+Question: Who painted the Mona Lisa?
+Answer: Da Vinci
+Question: Who discovered penicillin?
+Answer: Fleming
+Question: Who was the first man to walk on the moon?
+Answer: Armstrong
+Question: Which ancient civilization built the pyramids?
+Answer: Egyptians
+Question: Who was the first female Prime Minister of the United Kingdom?
+Answer: Thatcher
+Question: In which year did the United States declare independence from Great Britain?
+Answer: 1776
+Question: Who wrote "Romeo and Juliet"?
+Answer: Shakespeare
+Question: Who was the leader of the Soviet Union during World War II?
+Answer: Stalin
+Question: Which European country was not colonized during the era of European imperialism?
+Answer: Ethiopia
+Question: Who assassinated Julius Caesar?
+Answer: Brutus
+Question: Who painted the Sistine Chapel ceiling?
+Answer: Michelangelo
+Question: In which year did the French Revolution begin?
+Answer: 1789
+Question: Who was the last queen of ancient Egypt?
+Answer: Cleopatra
+Question: Who wrote "The Communist Manifesto"?
+Answer: Marx
+Question: Which country was responsible for the construction of the Great Wall?
+Answer: China
+Question: Who discovered America?
+Answer: Columbus
+Question: Who was the first Emperor of Rome?
+Answer: Augustus
+Question: Who was the first woman to win a Nobel Prize?
+Answer: Curie
+
+<Topic: Computer Science>
+Question: What does CPU stand for?
+Answer: Central Processing Unit
+Question: What is the main programming language used for building Android apps?
+Answer: Java
+Question: What does HTML stand
+
+ for?
+Answer: Hypertext Markup Language
+Question: What is the function of a firewall in computer networks?
+Answer: Security
+Question: What is the largest social media platform in the world?
+Answer: Facebook
+Question: What is the most popular web browser?
+Answer: Chrome
+Question: What is the file extension for a Java source code file?
+Answer: .java
+Question: What is the process of converting source code into machine code called?
+Answer: Compilation
+Question: What is the difference between HTTP and HTTPS?
+Answer: Security
+Question: What is the purpose of an operating system?
+Answer: Management
+Question: What does GUI stand for?
+Answer: Graphical User Interface
+Question: What is the binary representation of the number 10?
+Answer: 1010
+Question: What is the concept of encapsulation in object-oriented programming?
+Answer: Abstraction
+Question: What is the difference between a stack and a queue?
+Answer: Order
+Question: What is the role of a database management system?
+Answer: Storage
+Question: What is the function of a loop in programming?
+Answer: Repetition
+Question: What is the difference between a function and a method?
+Answer: Context
+Question: What is the purpose of an if-else statement?
+Answer: Condition
+Question: What is the purpose of a key in cryptography?
+Answer: Encryption
+Question: What is the function of an IP address?
+Answer: Identification
+
+<Topic: Mathematics>
+Question: What is the value of pi (π)?
+Answer: 3.14159
+Question: What is the Pythagorean theorem used for?
+Answer: Triangles
+Question: What is the symbol for square root?
+Answer: √
+Question: What is the area of a circle with radius 5?
+Answer: 78.54
+Question: What is the sum of angles in a triangle?
+Answer: 180
+Question: What is the value of e (Euler's number)?
+Answer: 2.71828
+Question: What is the formula for calculating the area of a rectangle?
+Answer: Length × Width
+Question: What is the value of sin(90 degrees)?
+Answer: 1
+Question: What is the symbol for greater than or equal to?
+Answer: ≥
+Question: What is the derivative of x^2 with respect to x?
+Answer: 2x
+Question: What is the value of log(100) to the base 10?
+Answer: 2
+Question: What is the equation for a straight line in slope-intercept form?
+Answer: y = mx + b
+Question: What is the value of 5 factorial (5!)?
+Answer: 120
+Question: What is the formula for the volume of a sphere?
+Answer: (4/3)πr^3
+Question: What is the square root of 144?
+Answer: 12
+Question: What is the value of cos(0 degrees)?
+Answer: 1
+Question: What is the formula for calculating the perimeter of a rectangle?
+Answer: 2 × (Length + Width)
+Question: What is the value of 3 to the power of 4 (3^4)?
+Answer: 81
+Question: What is the equation for the equation of a parabola in vertex form?
+Answer: y = a(x - h)^2 + k
+Question: What is the value of tan(45 degrees)?
+Answer: 1

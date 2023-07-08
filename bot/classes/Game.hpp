@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
 
 class Game{
     public :
@@ -28,6 +29,7 @@ class Game{
         void setRunning(bool state);
         void setStart(time_t time);
     private :
+        std::vector<std::string> AskedQuestions;
         std::map<std::string, int> players;
 		time_t start;
         std::string currentTopic;
@@ -41,4 +43,5 @@ class Game{
         void printQuestions();
         std::string caseToLower(const std::string& input);
 		std::string extractClientName(std::string message);
+        bool isAlreadyAsked(std::string question);
 };
