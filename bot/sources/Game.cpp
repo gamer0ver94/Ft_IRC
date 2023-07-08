@@ -30,7 +30,14 @@ std::string Game::update(std::string message, std::string clientName) {
                 std::cout << "CORRECT ANSWER!" << std::endl;
                 ++players[clientName]; // increment score for user who answered correctly
                 numberOfQuestions--;
-                return getRandomQuestion();
+                std::string question = getRandomQuestion();
+                //std::vector<std::string>::iterator it = AskedQuestions.begin();
+                while (isAlreadyAsked(question))
+                {
+                    question = getRandomQuestion();
+                }
+                AskedQuestions.push_back(question);
+                return (question);
             } else {
                 std::cout << "WRONG ANSWER!" << std::endl;
 				return "BADANSWER!#";
@@ -168,4 +175,15 @@ time_t Game::getStart(){
 
 std::string Game::getAnwser(){
     return question[currentTopic][currentQuestion];
+}
+
+bool Game::isAlreadyAsked(std::string question){
+     for (std::vector<std::string>::iterator it = AskedQuestions.begin(); it != AskedQuestions.end();it++)
+    {
+        if (question == *it)
+        {  
+            return true;
+        }
+    }
+    return false;
 }
