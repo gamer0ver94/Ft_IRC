@@ -12,6 +12,10 @@ int main(int argc, char**argv){
 			serverIp = "127.0.0.1";
 		}
 		int port = atoi(argv[3]);
+		if (port <= 1023){
+			std::cerr << "Port not valid." << std::endl;
+			return -1;
+		}
 		std::string password;
 		if (argv[4]){
 			password = argv[4];

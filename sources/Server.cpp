@@ -3,11 +3,13 @@
 
 bool Server::running = false;
 
-Server::Server(unsigned int port, std::string password) :
+Server::Server(unsigned int port, std::string password, bool ch) :
     port(port), password(password), socketFd(0), hostName("IRCSERVER") {
     std::signal(SIGINT, signalHandler);
     std::signal(SIGQUIT, signalHandler);
+    this->setPasswordChecker(ch);
     std::cout << "Server Constructor" << std::endl;
+
 }
 
 Server::~Server() {
@@ -247,4 +249,14 @@ void Server::signalHandler(int signal){
       std::cout << Red << "Server Closed" << Reset << std::endl;
       running = false;
     }
+}
+
+bool Server::getCheck_passwsord()
+{
+    return (this->password_check);
+}
+
+void Server::setPasswordChecker(bool ch)
+{
+    this->password_check = ch;
 }

@@ -8,19 +8,49 @@ void signalHandler(int signal) {
 }
 
 int main(int argc, char**argv){
-	if (argc != 3){
+	if (argc < 2){
 		std::cerr << "Not enough arguments to run the program." << std::endl;
 		return -1;
 	}
-	try{
-		std::string password(argv[2]);
-		unsigned int port = atoi(argv[1]);
-		Server *server = new Server(port, password);
-		server->run();
-		delete server;
+	else if(argc > 3){
+		std::cerr << "Too much arguments to run the program." << std::endl;
+		return -1;
 	}
-	catch(std::exception &e){
+	else if (argc == 2)
+	{
+		try{
+			std::string password("NULL");
+			std::cout << password << std::endl;
+			unsigned int port = atoi(argv[1]);
+			if (port <= 1023){
+				std::cerr << "Port not valid, minimum 1024" << std::endl;
+				return -1;
+			}
+			Server *server = new Server(port, password, false);
+			server->run();
+			delete server;
+		}
+		catch(std::exception &e){
 		std::cerr << "Error: " << e.what() << std::endl;
+		}
+	}
+	else
+	{
+		try{
+			std::string password(argv[2]);
+			std::cout << password << std::endl;
+			unsigned int port = atoi(argv[1]);
+			if (port <= 1023){
+				std::cerr << "Port not valid, minimum 1024" << std::endl;
+				return -1;
+			}
+			Server *server = new Server(port, password, true);
+			server->run();
+			delete server;
+		}
+		catch(std::exception &e){
+		std::cerr << "Error: " << e.what() << std::endl;
+		}
 	}
 	return 0;
 }

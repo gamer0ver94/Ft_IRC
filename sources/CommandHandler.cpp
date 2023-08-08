@@ -25,9 +25,12 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 	std::vector<int> op;
     switch (messageType){
         case 0 :    //CommandCAP
-            parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password);
+            parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password, server.getCheck_passwsord());
             if (password.empty() || server.getPassword() != password){
-                response = ERROR_BADPASSWORD();
+                if (password == "no password needed.")
+                    response = "No password needed.\r\n";
+                else
+                    response = ERROR_BADPASSWORD();
                 return;
             }
             for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
@@ -41,7 +44,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response = WELCOME_SERVER(server.getHostName(),server.getClients()[clientFd]->getNickName(), readFile("wel.txt"), readFile("come.txt"));
             break;
         case 1 :    //CommandNICK/USER
-            parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password);
+            parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password, server.getCheck_passwsord());
             if (password.empty() || server.getPassword() != password){
                 response = ERROR_BADPASSWORD();
                 return;
@@ -437,7 +440,7 @@ std::string CommandHandler::readFile(const std::string& filePath) {
     return buffer.str();
 }
 
-bool CommandHandler::parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName, std::string &password){
+bool CommandHandler::parseNickNameMessage(const std::string& message, std::string& nickName, std::string& username, std::string& hostName, std::string&serverHostName, std::string& realName, std::string &password, bool ch){
     // Split the message into words using whitespace as delimiter
     std::istringstream iss(message);
     std::string word;
@@ -446,10 +449,18 @@ bool CommandHandler::parseNickNameMessage(const std::string& message, std::strin
         words.push_back(word);
     }
     for (size_t i = 0; i < words.size(); i++){
-        if (words[i] == "PASS"){
-            password = words[i + 1];
+        if (words[i] == "PASS")
+        {
+            if (ch == false && words[i + 1] != "NICK")
+                password = "no password needed.";
+            else if (ch == false && words[i + 1] == "NICK")
+                password = "NULL";
+            else
+                password = words[i + 1];
         }
         else if (words[i] == "NICK"){
+            if (words[i - 1] == "LS" && ch == false)
+                password = "NULL";
             nickName = words[i + 1];
         }
         else if (words[i] == "USER"){

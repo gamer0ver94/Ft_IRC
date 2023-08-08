@@ -23,7 +23,7 @@
 class Server{
 	public :
 		// Constructors
-		Server(unsigned int port, std::string password);
+		Server(unsigned int port, std::string password, bool ch);
 		~Server();
 		// Methodes
 		void run();
@@ -36,6 +36,8 @@ class Server{
 		std::string getHostName();
 		std::vector<Channel> &getChannels();
 		void printData();
+		bool getCheck_passwsord();
+		void setPasswordChecker(bool ch);
 	private :
  	 static void signalHandler(int signal);
 		static bool running;
@@ -56,4 +58,5 @@ class Server{
 		void handleCommunication(std::vector<pollfd>& pollFds);
 		void handleClientMessage(std::string message, int& clientFd);
 		bool completedMessage(std::string &message);
+		bool password_check;
 };
