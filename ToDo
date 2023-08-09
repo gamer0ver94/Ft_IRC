@@ -57,3 +57,8 @@ Test the server with multiple clients simultaneously to verify its scalability.
 Prepare the final executable and documentation for submission.
 Deploy the server on the specified port, ensuring it runs without errors.
 Note: Throughout the development process, refer to the IRC protocol specifications and the given requirements to ensure you're implementing the necessary functionality accurately.
+
+
+//capabilities to define NICK and user name
+
+//cant authenticate with a user name that already exist

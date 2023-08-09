@@ -892,8 +892,17 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
         if (commands[i].find("PASS") != std::string::npos){
             server.getAuthentications()[clientFd]->pass = extractData(commands[i]);
         }
-         if (commands[i].find("NICK") != std::string::npos && server.getAuthentications()[clientFd]->nick.empty() && commands[i].find("MODE") == std::string::npos){
+        if (commands[i].find("NICK") != std::string::npos && server.getAuthentications()[clientFd]->nick.empty() && commands[i].find("MODE") == std::string::npos){
             server.getAuthentications()[clientFd]->nick = extractData(commands[i]);
+            if (server.getAuthentications()[clientFd]->nick == "NULL"){
+                std::string response = "ERROR 461 USER :Not enough parameters\r\n";
+                std::map<int, Authenticate*>::iterator it = server.getAuthentications().find(clientFd);
+                if (it != server.getAuthentications().end()) {
+                    delete it->second; // Delete the associated value (assuming Authenticate is dynamically allocated)
+                    server.getAuthentications().erase(it); // Remove the element from the map
+                }
+                return (response);
+            }
         }
         // else{
         //     server.getClients()[clientFd]->setNickName(commands[i]);
@@ -937,7 +946,10 @@ std::string CommandHandler::extractData(std::string message){
     while (iss >> word) {
         words.push_back(word);
     }
+    if (words[0] == "NICK" && words.size() == 1)
+        return ("NULL");
     if (words.size() == 1)
-        return (NULL);
+        return ("NULL");
+    
     return words[1];
 }
