@@ -904,7 +904,7 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
     }
     if (!server.getAuthentications()[clientFd]->user.empty() && !server.getAuthentications()[clientFd]->nick.empty() && server.getAuthentications()[clientFd]->online == false){
         std::cout << "DONE DONE DONE" << std::endl;
-        if (!server.getPassword().empty() && server.getAuthentications()[clientFd]->pass != server.getPassword()){
+        if ((!server.getPassword().empty() && server.getAuthentications()[clientFd]->pass != server.getPassword()) || (server.getPassword().empty() && !server.getAuthentications()[clientFd]->pass.empty())){
            //delete authemtication
             std::map<int, Authenticate*>::iterator it = server.getAuthentications().find(clientFd);
             // If the key is found, erase the element from the map
@@ -937,5 +937,7 @@ std::string CommandHandler::extractData(std::string message){
     while (iss >> word) {
         words.push_back(word);
     }
+    if (words.size() == 1)
+        return (NULL);
     return words[1];
 }
