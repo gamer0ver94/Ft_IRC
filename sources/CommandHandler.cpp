@@ -135,6 +135,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response = handleCapabilityNegotiation(message);
             break;
         case 8 : // Command Join
+			if (!server.getAuthentications()[clientFd]->online){
+				break;
+			}
+			std::cout << "BUG" << std::endl;
             parseChannelName(message, channelName);
             // check if channel exit and create it;
             if (!doesChannelExist(server.getChannels(), channelName)){
@@ -280,7 +284,7 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response.clear();
             break;
         case 11 :
-            response = ":QUIT :leaving\r\n";
+            response = ":QUIT :leaving";
             try {
                 if (server.getClients()[clientFd]){
                     deleteClientFromAllChannels(server.getChannels(),clientFd, server.getClients()[clientFd]->getNickName());
@@ -291,10 +295,20 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
                 std::cout << e.what() << std::endl;
             }
             deleteClient(server.getClients(), clientFd);
+			for (std::map<int, Authenticate*>::iterator it = server.getAuthentications().begin(); it != server.getAuthentications().end(); ++it) {
+				std::cout << "bug4" << std::endl;
+				if (it->first == clientFd) {
+					delete it->second;
+					std::cout << "bug3" << std::endl;
+					server.getAuthentications().erase(it);
+					break;
+				}
+			}
+			std::cout << "bug2" << std::endl;
             break;
         case 12 : // Command Kick / ps debugg if he tries to kick himself
             if (!parseKickMessage(message, channelName ,nickName)){
-                response = "ERROR 461 USER :Not enough parameters\r\n";
+                response = "ERROR 461 KICK :Not enough parameters\r\n";
                 break;
             }
             response = NOTICE_MSG(channelName, channelName, " You have been KICKED from the Channel </part> to quit the Channel!");
@@ -544,7 +558,7 @@ bool CommandHandler::parseKickMessage(std::string message, std::string &channelN
     while (iss >> word) {
         words.push_back(word);
     }
-    if (words.size() != 3){
+    if (words.size() < 3){
         return false;
     }
     for (size_t i = 0; i < words.size(); i++){
@@ -878,7 +892,6 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
         commands.push_back(command);
     }
     if (message.find("CAP LS") != std::string::npos && !isAuthenticated(server.getAuthentications(), clientFd)) {
-
         Authenticate *newAuthetication = new Authenticate();
         server.getAuthentications().insert(std::make_pair(clientFd, newAuthetication));
     }
@@ -939,7 +952,7 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
         server.getAuthentications()[clientFd]->online = true;
         return response;
     }
-    return NULL;
+    return "";
 }
 
 std::string CommandHandler::extractData(std::string message){

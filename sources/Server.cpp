@@ -138,26 +138,6 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
                     pollFds.erase(pollFds.begin() + i);
                     continue;
                 }
-            //     message += buffer;
-            // }
-            // if (strstr(message.c_str(), "CAP LS") && !strstr(message.c_str(), "USER")) {
-            //     // Wait for the USER message
-            //     std::cout << message;
-            //     while (!strstr(message.c_str(), "USER")) {
-            //         bzero(buffer, sizeof(buffer));
-            //         int recvBytes = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
-            //         std::cout << buffer;
-            //         if (recvBytes < 0) {
-            //             throw std::runtime_error("Failed to receive data from client.");
-            //         } else if (recvBytes == 0) {
-            //             // Client closed the connection
-            //             close(pollFds[i].fd);
-            //             pollFds.erase(pollFds.begin() + i);
-            //             continue;
-            //         }
-            //         message += buffer;
-            //     }
-            // }
             message = buffer;
             handleClientMessage(message, pollFds[i].fd);
         }
@@ -174,6 +154,7 @@ void Server::handleClientMessage(std::string message, int& clientFd){
     if (!response.empty()){
         CommandHandler::sendExtraMessage(clientFd, response);
     }
+	std::cout << "bug1" << std::endl;
 }
 
 void Server::printData(){
