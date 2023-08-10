@@ -60,9 +60,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
         case 3 : // Command WHOIS
             response = WHOIS_MSG(server.getHostName(),server.getClients()[clientFd]->getNickName());
            break;
-        case 4 : // Command ENDCAP
-            response = WELCOME_SERVER(server.getHostName(),server.getClients()[clientFd]->getNickName(), readFile("wel.txt"), readFile("come.txt"));
-            break;
         case 5 : // Command PING
             response = PONG_MSG(server.getHostName());
             server.printData();
@@ -919,7 +916,22 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
         }
         if (commands[i].find("USER") != std::string::npos && isAuthenticated(server.getAuthentications(), clientFd) && server.getAuthentications()[clientFd]->user.empty()){
             server.getAuthentications()[clientFd]->user = extractData(commands[i]);
+			std::istringstream iss(message);
+    		std::string word;
+    		std::vector<std::string> words;
+    		while (iss >> word) {
+    		    words.push_back(word);
+    		}
+    		if (words.size() < 5){
+				std::map<int, Authenticate*>::iterator it = server.getAuthentications().find(clientFd);
+				if (it != server.getAuthentications().end()) {
+                    delete it->second; // Delete the associated value (assuming Authenticate is dynamically allocated)
+                    server.getAuthentications().erase(it); // Remove the element from the map
+                }
+    		    return "ERROR 461 USER :Not enough parameters\r\n";
+    		}
             if (server.getAuthentications()[clientFd]->user == "NULL"){
+				
                 std::string response = "ERROR 461 USER :Not enough parameters\r\n";
                 std::map<int, Authenticate*>::iterator it = server.getAuthentications().find(clientFd);
                 if (it != server.getAuthentications().end()) {
@@ -943,6 +955,11 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
         }
         for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
             if (it->second->getNickName() == server.getAuthentications()[clientFd]->nick){
+				std::map<int, Authenticate*>::iterator it = server.getAuthentications().find(clientFd);
+                if (it != server.getAuthentications().end()) {
+                    delete it->second; // Delete the associated value (assuming Authenticate is dynamically allocated)
+                    server.getAuthentications().erase(it); // Remove the element from the map
+                }
                 return ERROR_NICKTAKEN();
             }
         }
