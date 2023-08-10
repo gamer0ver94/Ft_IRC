@@ -26,23 +26,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
     switch (messageType){
         case 0 :    //CommandCAP
             response = handleAuthentication(message, server, clientFd);
-            // if (!parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password)){
-            //     response = "ERROR 461 USER :Not enough parameters\r\n";
-            //     break;
-            // }
-            // if (password.empty() || server.getPassword() != password){
-            //     response = ERROR_BADPASSWORD();
-            //     return;
-            // }
-            // for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
-            //     if (it->second->getNickName() == nickName){
-            //         response = ERROR_NICKTAKEN();
-            //         return;
-            //     }
-            // }
-            // client = new Client(clientFd, nickName, userName, hostName, serverHostName, realName);
-            // server.getClients().insert(std::pair<int, Client*>(clientFd, client));
-            // response = WELCOME_SERVER(server.getHostName(),server.getClients()[clientFd]->getNickName(), readFile("wel.txt"), readFile("come.txt"));
             break;
         case 1 :    //CommandNICK/USER
             parseNickNameMessage(message, nickName, userName, hostName, serverHostName, realName, password);
@@ -310,7 +293,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             deleteClient(server.getClients(), clientFd);
             break;
         case 12 : // Command Kick / ps debugg if he tries to kick himself
-            parseKickMessage(message, channelName ,nickName);
+            if (!parseKickMessage(message, channelName ,nickName)){
+                response = "ERROR 461 USER :Not enough parameters\r\n";
+                break;
+            }
             response = NOTICE_MSG(channelName, channelName, " You have been KICKED from the Channel </part> to quit the Channel!");
             for (it = server.getChannels().begin();it != server.getChannels().end(); ++it){
                 if ((*it).getChannelName() == channelName){
@@ -558,10 +544,14 @@ bool CommandHandler::parseKickMessage(std::string message, std::string &channelN
     while (iss >> word) {
         words.push_back(word);
     }
+    if (words.size() != 3){
+        return false;
+    }
     for (size_t i = 0; i < words.size(); i++){
         if (words[i] == "KICK"){
             channelName = words[i + 1];
             nickName = words[i + 2];
+            return true;
         }
     }
     return false;
