@@ -16,6 +16,11 @@ Server::~Server() {
         delete it->second;
         clients.erase(it);
     }
+    while (!authentications.empty()) {
+        std::map<int, Authenticate*>::iterator it = authentications.begin();
+        delete it->second;
+        authentications.erase(it);
+    }
 }
 
 void Server::run() {

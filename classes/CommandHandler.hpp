@@ -2,6 +2,7 @@
 #include <iostream>
 #include "../classes/Server.hpp"
 #include "../classes/Client.hpp"
+#include "../classes/Authenticate.hpp"
 #define NOTICE_MSG(hostName, target, message) (":" + hostName + " NOTICE " + target + " :" + message + "\r\n")
 #define ERROR_BADPASSWORD() ("ERROR :Connection refused: Password Does Not Match\r\n")
 #define ERROR_NICKTAKEN() ("ERROR :Connection refused: NickName already taken\r\n");
@@ -54,5 +55,6 @@ class CommandHandler{
         static bool isValidMode(std::string mode);
         static std::string handleAuthentication(std::string message, Server &server, int clientFd);
         static std::string extractData(std::string message);
+        static bool isAuthenticated(std::map<int, Authenticate*> authentications, int clientFd);
 };
 

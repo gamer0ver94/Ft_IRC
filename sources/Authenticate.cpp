@@ -5,5 +5,5 @@ Authenticate::Authenticate() : online(false){
 }
 
 Authenticate::~Authenticate(){
-    
+    std::cout << "Authetication Destructor" << std::endl;
 }

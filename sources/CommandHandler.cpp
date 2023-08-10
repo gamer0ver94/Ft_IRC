@@ -60,16 +60,19 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             server.getClients().insert(std::pair<int, Client*>(clientFd, client));
             response = WELCOME_SERVER(server.getHostName(),server.getClients()[clientFd]->getNickName(), readFile("wel.txt"), readFile("come.txt"));
             break;
-        case 2 :    // Command NICK
+        case 2 :    // Command userhost
             while (iss >> word) {
                 words.push_back(word);
             }
-            nickName = server.getClients()[clientFd]->getNickName();
-            server.getClients()[clientFd]->setNickName(words[1]);
-            server.getClients()[clientFd]->setUserName(words[1]);
-            server.getClients()[clientFd]->setHostName(words[1]);
-            updateClient(server.getChannels(), clientFd, nickName, words[1]);
-            response = NICKCHANGE_MSG(server.getHostName(),nickName, server.getClients()[clientFd]->getNickName());
+            if (words.size() != 5){
+                response = "ERROR 461 USER :Not enough parameters\r\n";
+            }
+            else{
+                server.getClients()[clientFd]->setUserName(words[1]);
+                server.getClients()[clientFd]->setHostName(words[3]);
+                server.getClients()[clientFd]->setHostName(words[4]);
+                response = NICKCHANGE_MSG(server.getHostName(),nickName, server.getClients()[clientFd]->getNickName());
+            }
             break;
         case 3 : // Command WHOIS
             response = WHOIS_MSG(server.getHostName(),server.getClients()[clientFd]->getNickName());
@@ -479,7 +482,7 @@ int CommandHandler::getMessageType(std::string message){
     else if (message.find("NICK ") != std::string::npos && message.find("USER ") != std::string::npos){
         return 1;
     }
-    else if (message.find("NICK ") != std::string::npos){
+    else if (message.find("userhost ") != std::string::npos){
         return 2;
     }
     else if (message.find("WHOIS ") != std::string::npos){
@@ -884,15 +887,16 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
     while (std::getline(iss, command, '\n')) {
         commands.push_back(command);
     }
-    if (message.find("CAP LS") != std::string::npos && server.getAuthentications().find(clientFd) == server.getAuthentications().end()){ // end authetication exit
+    if (message.find("CAP LS") != std::string::npos && !isAuthenticated(server.getAuthentications(), clientFd)) {
+
         Authenticate *newAuthetication = new Authenticate();
         server.getAuthentications().insert(std::make_pair(clientFd, newAuthetication));
     }
     for (size_t i = 0; i < commands.size();i++) {
-        if (commands[i].find("PASS") != std::string::npos){
+        if (commands[i].find("PASS") != std::string::npos && isAuthenticated(server.getAuthentications(), clientFd)){
             server.getAuthentications()[clientFd]->pass = extractData(commands[i]);
         }
-        if (commands[i].find("NICK") != std::string::npos && server.getAuthentications()[clientFd]->nick.empty() && commands[i].find("MODE") == std::string::npos){
+        if (commands[i].find("NICK") != std::string::npos && isAuthenticated(server.getAuthentications(), clientFd) && server.getAuthentications()[clientFd]->nick.empty() && commands[i].find("MODE") == std::string::npos){
             server.getAuthentications()[clientFd]->nick = extractData(commands[i]);
             if (server.getAuthentications()[clientFd]->nick == "NULL"){
                 std::string response = "ERROR 461 USER :Not enough parameters\r\n";
@@ -904,15 +908,26 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
                 return (response);
             }
         }
-        // else{
-        //     server.getClients()[clientFd]->setNickName(commands[i]);
-        // }
-         if (commands[i].find("USER") != std::string::npos){
+        else if (commands[i].find("NICK") != std::string::npos && isAuthenticated(server.getAuthentications(), clientFd) && commands[i].find("MODE") == std::string::npos && server.getAuthentications()[clientFd]->online){
+            std::string nickName = extractData(commands[i]);
+            std::string response = NICKCHANGE_MSG(server.getClients()[clientFd]->getNickName(),server.getClients()[clientFd]->getNickName(), nickName);
+            server.getClients()[clientFd]->setNickName(nickName);
+            return response;
+        }
+        if (commands[i].find("USER") != std::string::npos && isAuthenticated(server.getAuthentications(), clientFd) && server.getAuthentications()[clientFd]->user.empty()){
             server.getAuthentications()[clientFd]->user = extractData(commands[i]);
+            if (server.getAuthentications()[clientFd]->user == "NULL"){
+                std::string response = "ERROR 461 USER :Not enough parameters\r\n";
+                std::map<int, Authenticate*>::iterator it = server.getAuthentications().find(clientFd);
+                if (it != server.getAuthentications().end()) {
+                    delete it->second; // Delete the associated value (assuming Authenticate is dynamically allocated)
+                    server.getAuthentications().erase(it); // Remove the element from the map
+                }
+                return (response);
+            }
         }
     }
-    if (!server.getAuthentications()[clientFd]->user.empty() && !server.getAuthentications()[clientFd]->nick.empty() && server.getAuthentications()[clientFd]->online == false){
-        std::cout << "DONE DONE DONE" << std::endl;
+    if (isAuthenticated(server.getAuthentications(), clientFd) && !server.getAuthentications()[clientFd]->user.empty() && !server.getAuthentications()[clientFd]->nick.empty() && server.getAuthentications()[clientFd]->online == false){
         if ((!server.getPassword().empty() && server.getAuthentications()[clientFd]->pass != server.getPassword()) || (server.getPassword().empty() && !server.getAuthentications()[clientFd]->pass.empty())){
            //delete authemtication
             std::map<int, Authenticate*>::iterator it = server.getAuthentications().find(clientFd);
@@ -923,12 +938,11 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
             }
            return ERROR_BADPASSWORD();
         }
-        // for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
-        //     if (it->second->getNickName() == nickName){
-        //         response = ERROR_NICKTAKEN();
-        //         return;
-        //     }
-        // }
+        for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
+            if (it->second->getNickName() == server.getAuthentications()[clientFd]->nick){
+                return ERROR_NICKTAKEN();
+            }
+        }
         Client *client = new Client(clientFd, server.getAuthentications()[clientFd]->nick, server.getAuthentications()[clientFd]->nick, server.getAuthentications()[clientFd]->nick, server.getAuthentications()[clientFd]->nick, server.getAuthentications()[clientFd]->nick);
         server.getClients().insert(std::pair<int, Client*>(clientFd, client));
         std:: string response = WELCOME_SERVER(server.getHostName(),server.getClients()[clientFd]->getNickName(), readFile("wel.txt"), readFile("come.txt"));
@@ -952,4 +966,13 @@ std::string CommandHandler::extractData(std::string message){
         return ("NULL");
     
     return words[1];
+}
+
+bool CommandHandler::isAuthenticated(std::map<int, Authenticate*> authentications, int clientFd) {
+    for (std::map<int, Authenticate*>::iterator it = authentications.begin(); it != authentications.end(); ++it) {
+        if (it->first == clientFd) {
+            return true;
+        }
+    }
+    return false;
 }
