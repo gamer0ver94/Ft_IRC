@@ -135,7 +135,6 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 			if (!server.getAuthentications()[clientFd]->online){
 				break;
 			}
-			std::cout << "BUG" << std::endl;
             parseChannelName(message, channelName);
             // check if channel exit and create it;
             if (!doesChannelExist(server.getChannels(), channelName)){
@@ -293,15 +292,12 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             deleteClient(server.getClients(), clientFd);
 			for (std::map<int, Authenticate*>::iterator it = server.getAuthentications().begin(); it != server.getAuthentications().end(); ++it) {
-				std::cout << "bug4" << std::endl;
 				if (it->first == clientFd) {
 					delete it->second;
-					std::cout << "bug3" << std::endl;
 					server.getAuthentications().erase(it);
 					break;
 				}
 			}
-			std::cout << "bug2" << std::endl;
             break;
         case 12 : // Command Kick / ps debugg if he tries to kick himself
             if (!parseKickMessage(message, channelName ,nickName)){

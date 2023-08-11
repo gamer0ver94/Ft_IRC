@@ -134,6 +134,22 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
                     throw std::runtime_error("Failed to receive data from client.");
                 } else if (recvBytes == 0) {
                     // Client closed the connection
+					std::cout << "client disconect" << std::endl;
+					//delete client
+					for (std::map<int, Client*>::iterator it = clients.begin(); it != clients.end(); ++it){
+           				if (it->second->getSocketFd() == pollFds[i].fd){
+							delete it->second;
+                    			clients.erase(it); // Remove the element from the map
+                		}
+                		break;
+            		}
+					//delete authentication
+					std::map<int, Authenticate*>::iterator it = authentications.find(pollFds[i].fd);
+					if (it != authentications.end()) {
+                   		delete it->second; // Delete the associated value (assuming Authenticate is dynamically allocated)
+                    	authentications.erase(it); // Remove the element from the map
+                	}
+					//close fd
                     close(pollFds[i].fd);
                     pollFds.erase(pollFds.begin() + i);
                     continue;
@@ -154,7 +170,6 @@ void Server::handleClientMessage(std::string message, int& clientFd){
     if (!response.empty()){
         CommandHandler::sendExtraMessage(clientFd, response);
     }
-	std::cout << "bug1" << std::endl;
 }
 
 void Server::printData(){
