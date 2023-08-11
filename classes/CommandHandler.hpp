@@ -56,5 +56,6 @@ class CommandHandler{
         static std::string handleAuthentication(std::string message, Server &server, int clientFd);
         static std::string extractData(std::string message);
         static bool isAuthenticated(std::map<int, Authenticate*> authentications, int clientFd);
+		static bool doesClientExist(Server& server, int clientFd);
 };
 

@@ -44,6 +44,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response = WELCOME_SERVER(server.getHostName(),server.getClients()[clientFd]->getNickName(), readFile("wel.txt"), readFile("come.txt"));
             break;
         case 2 :    // Command userhost
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             while (iss >> word) {
                 words.push_back(word);
             }
@@ -58,13 +62,25 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             break;
         case 3 : // Command WHOIS
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             response = WHOIS_MSG(server.getHostName(),server.getClients()[clientFd]->getNickName());
            break;
         case 5 : // Command PING
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             response = PONG_MSG(server.getHostName());
             server.printData();
             break;
         case 6 : // Command Mode
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             try{
                 mode = extractMode(message, channelName);
                 if (mode == "b"){
@@ -129,10 +145,11 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             break;
         case 7 :
-            response = handleCapabilityNegotiation(message);
+            response = "did you mean CAP LS?\n";
             break;
         case 8 : // Command Join
-			if (!server.getAuthentications()[clientFd]->online){
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
 				break;
 			}
             parseChannelName(message, channelName);
@@ -214,6 +231,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             break;
         case 9 : // Command Part
         //send this message to all client after deleting this client of the channel
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             parseChannelName(message, channelName);
             nickName = server.getClients()[clientFd]->getNickName();
             response = ":" + nickName + " PART " + channelName + "\r\n";
@@ -261,6 +282,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
             break;
         case 10 : // Command PRIVM
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             parseMessage(message, channelName, messageContent);
             for (it = server.getChannels().begin();it != server.getChannels().end(); ++it){
                 if ((*it).getChannelName() == channelName){
@@ -280,6 +305,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             response.clear();
             break;
         case 11 :
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             response = ":QUIT :leaving";
             try {
                 if (server.getClients()[clientFd]){
@@ -300,6 +329,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 			}
             break;
         case 12 : // Command Kick / ps debugg if he tries to kick himself
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             if (!parseKickMessage(message, channelName ,nickName)){
                 response = "ERROR 461 KICK :Not enough parameters\r\n";
                 break;
@@ -342,9 +375,13 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
 					}
                 }
             }
-            // response = ":" + nickName + "!" + nickName + "@" + server.getHostName() + " Part " + channelName + "\r\n";
+			response = ":IRC 403 " + nickName + " " + channelName + " :No such channel\n";
             break;
         case 13 : // Command Invite
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             try{
                 while (iss >> word) {
                 words.push_back(word);
@@ -368,6 +405,10 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             break;
         case 14 : // Command Topic
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             try{
                 parseChannelName(message, channelName);
                 if (isOperator(getChannelByName(server.getChannels(), channelName).getOpClientFd(), clientFd) || getChannelByName(server.getChannels(), channelName).getTMode() == false){
@@ -384,11 +425,19 @@ void CommandHandler::handleCommand(Server& server, int &clientFd, std::string me
             }
             break;
         case 15 : //WHO
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             break;
         case 16 :
             response = getAllChannelsNames(server.getChannels());
             break;
         default :
+			if(!doesClientExist(server, clientFd)){
+				response = "Authentication : does not exist\nExemple of commands to make authentication : CAP LS, PASS, USER, NICK\n<This Server does not suport CAP negociation!>\n";
+				break;
+			}
             response = "Unknown Command.\r\n";
             break;
     }
@@ -484,13 +533,13 @@ int CommandHandler::getMessageType(std::string message){
     else if (message.find("CAP END") != std::string::npos){
         return 4;
     }
-    else if (message.find("PING ") != std::string::npos){
+    else if (message.find("PING") != std::string::npos){
         return 5;
     }
     else if (message.find("MODE ") != std::string::npos){
         return 6;
     }
-    else if(message.find("CAP ") != std::string::npos){
+    else if(message.find("CAP") != std::string::npos){
         return 7;
     }
     else if (message.find("JOIN ") != std::string::npos){
@@ -514,7 +563,7 @@ int CommandHandler::getMessageType(std::string message){
     else if (message.find("TOPIC ") != std::string::npos){
         return 14;
     }
-    else if (message.find("WHO ") != std::string::npos){
+    else if (message.find("WHO") != std::string::npos){
         return 15;
     }
     else if (message.find("LIST ") != std::string::npos){
@@ -906,8 +955,10 @@ std::string CommandHandler::handleAuthentication(std::string message, Server &se
         }
         else if (commands[i].find("NICK") != std::string::npos && isAuthenticated(server.getAuthentications(), clientFd) && commands[i].find("MODE") == std::string::npos && server.getAuthentications()[clientFd]->online){
             std::string nickName = extractData(commands[i]);
+			std::string oldName = server.getAuthentications()[clientFd]->nick;
             std::string response = NICKCHANGE_MSG(server.getClients()[clientFd]->getNickName(),server.getClients()[clientFd]->getNickName(), nickName);
             server.getClients()[clientFd]->setNickName(nickName);
+			updateClient(server.getChannels(), clientFd, oldName, nickName);
             return response;
         }
         if (commands[i].find("USER") != std::string::npos && isAuthenticated(server.getAuthentications(), clientFd) && server.getAuthentications()[clientFd]->user.empty()){
@@ -991,4 +1042,13 @@ bool CommandHandler::isAuthenticated(std::map<int, Authenticate*> authentication
         }
     }
     return false;
+}
+
+bool CommandHandler::doesClientExist(Server& server, int clientFd){
+	for (std::map<int, Client*>::iterator it = server.getClients().begin(); it != server.getClients().end(); ++it){
+		if (it->second->getSocketFd() == clientFd){
+			return true;
+       	}
+    }
+	return false;
 }

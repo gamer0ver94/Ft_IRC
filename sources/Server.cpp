@@ -139,7 +139,7 @@ void Server::handleCommunication(std::vector<pollfd>& pollFds) {
 					for (std::map<int, Client*>::iterator it = clients.begin(); it != clients.end(); ++it){
            				if (it->second->getSocketFd() == pollFds[i].fd){
 							delete it->second;
-                    			clients.erase(it); // Remove the element from the map
+                    		clients.erase(it); // Remove the element from the map
                 		}
                 		break;
             		}
